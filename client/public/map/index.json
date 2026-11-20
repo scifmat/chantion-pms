@@ -1,0 +1,173 @@
+{
+  "北京市": {
+    "adcode": 110000,
+    "file": "110000.json",
+    "features": 16
+  },
+  "天津市": {
+    "adcode": 120000,
+    "file": "120000.json",
+    "features": 16
+  },
+  "河北省": {
+    "adcode": 130000,
+    "file": "130000.json",
+    "features": 11
+  },
+  "山西省": {
+    "adcode": 140000,
+    "file": "140000.json",
+    "features": 11
+  },
+  "内蒙古自治区": {
+    "adcode": 150000,
+    "file": "150000.json",
+    "features": 12
+  },
+  "辽宁省": {
+    "adcode": 210000,
+    "file": "210000.json",
+    "features": 14
+  },
+  "吉林省": {
+    "adcode": 220000,
+    "file": "220000.json",
+    "features": 9
+  },
+  "黑龙江省": {
+    "adcode": 230000,
+    "file": "230000.json",
+    "features": 13
+  },
+  "上海市": {
+    "adcode": 310000,
+    "file": "310000.json",
+    "features": 16
+  },
+  "江苏省": {
+    "adcode": 320000,
+    "file": "320000.json",
+    "features": 13
+  },
+  "浙江省": {
+    "adcode": 330000,
+    "file": "330000.json",
+    "features": 11
+  },
+  "安徽省": {
+    "adcode": 340000,
+    "file": "340000.json",
+    "features": 16
+  },
+  "福建省": {
+    "adcode": 350000,
+    "file": "350000.json",
+    "features": 9
+  },
+  "江西省": {
+    "adcode": 360000,
+    "file": "360000.json",
+    "features": 11
+  },
+  "山东省": {
+    "adcode": 370000,
+    "file": "370000.json",
+    "features": 16
+  },
+  "河南省": {
+    "adcode": 410000,
+    "file": "410000.json",
+    "features": 18
+  },
+  "湖北省": {
+    "adcode": 420000,
+    "file": "420000.json",
+    "features": 17
+  },
+  "湖南省": {
+    "adcode": 430000,
+    "file": "430000.json",
+    "features": 14
+  },
+  "广东省": {
+    "adcode": 440000,
+    "file": "440000.json",
+    "features": 21
+  },
+  "广西壮族自治区": {
+    "adcode": 450000,
+    "file": "450000.json",
+    "features": 14
+  },
+  "海南省": {
+    "adcode": 460000,
+    "file": "460000.json",
+    "features": 19
+  },
+  "重庆市": {
+    "adcode": 500000,
+    "file": "500000.json",
+    "features": 38
+  },
+  "四川省": {
+    "adcode": 510000,
+    "file": "510000.json",
+    "features": 21
+  },
+  "贵州省": {
+    "adcode": 520000,
+    "file": "520000.json",
+    "features": 9
+  },
+  "云南省": {
+    "adcode": 530000,
+    "file": "530000.json",
+    "features": 16
+  },
+  "西藏自治区": {
+    "adcode": 540000,
+    "file": "540000.json",
+    "features": 7
+  },
+  "陕西省": {
+    "adcode": 610000,
+    "file": "610000.json",
+    "features": 10
+  },
+  "甘肃省": {
+    "adcode": 620000,
+    "file": "620000.json",
+    "features": 14
+  },
+  "青海省": {
+    "adcode": 630000,
+    "file": "630000.json",
+    "features": 8
+  },
+  "宁夏回族自治区": {
+    "adcode": 640000,
+    "file": "640000.json",
+    "features": 5
+  },
+  "新疆维吾尔自治区": {
+    "adcode": 650000,
+    "file": "650000.json",
+    "features": 24
+  },
+  "台湾省": {
+    "adcode": 710000,
+    "file": "710000.json",
+    "features": 1,
+    "noDrill": true
+  },
+  "中国香港": {
+    "adcode": 810000,
+    "file": "810000.json",
+    "features": 18
+  },
+  "中国澳门": {
+    "adcode": 820000,
+    "file": "820000.json",
+    "features": 8
+  }
+}

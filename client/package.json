@@ -1,0 +1,25 @@
+{
+  "name": "chantion-pms-client",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "ChanTion-PMS frontend skeleton (step 1)",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.2",
+    "echarts": "^6.1.0",
+    "element-plus": "^2.14.8",
+    "vue": "^3.5.45"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "vite": "^5.4.21"
+  }
+}

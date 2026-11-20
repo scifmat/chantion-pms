@@ -1,0 +1,35 @@
+# 依赖与构建产物（不进版本库；start-dev.bat 首次运行会自动安装）
+node_modules/
+client/dist/
+client/.vite/
+
+# 真实数据文件（不进版本库，避免把测试数据带给别人）
+server/data/*.db
+server/data/*.db-wal
+server/data/*.db-shm
+server/backup/
+
+# 开发文档
+00-规范文档/
+01-原型/
+02-数据/
+03-归档/
+
+# 测试数据、文件
+_test/
+
+
+# 本地私有环境变量副本（server/.env 与 client/.env 为本轮开箱即用的默认值，保留）
+.env.local
+*.log
+.DS_Store
+
+# 操作系统与编辑器产生的本地文件
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+*.tmp
+
+# AI助手数据目录
+.workbuddy/

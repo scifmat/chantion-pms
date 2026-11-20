@@ -1,0 +1,520 @@
+/* 第 1～3 步：移植 mvp-v1 原型视觉样式，保证界面一致性
+   【样式作用域规范 / 2026-11-13 标准化】项目自己的元素选择器与「可能和组件库撞名的
+   通用类」一律用 :where(#app) 限定在 Vue 挂载节点内。Element Plus 的日历、时间、消息
+   等浮层 teleported 到 body（在 #app 之外），裸选择器会误伤组件库元素：曾出现项目
+   .confirm 命中 EP 的 .el-time-panel__btn.confirm，把「确定」按钮变成 position:fixed
+   的全屏遮罩；以及裸 table{min-width:960px} 把 .el-date-table 撑到 960px 冲出浮层。
+   :where() 零优先级提升，不改变项目内部原有优先级关系。项目专属类名（.fld/.adv-table
+   等）不会与 el- 前缀冲突，保持原写法；仅 :root 变量、ElMessage、chantion-date-popper
+   三组是显式面向组件库的全局规则。 */
+/* 全局宽度边界（UI 统一化 2026-11-13）：
+   #app 是 flex 容器，默认 min-width:auto 会被内部超宽表格撑开（实测高级查询把
+   #app 撑到 2407px、body 跟着出现整页横向滚动条）。这里从根上锁住宽度，
+   并让 main / content 都不产生横向滚动；多列表格只在自己的 .table-wrap 里滚动。 */
+*{box-sizing:border-box}
+/* 全局锁高（标准后台布局）：整页不滚动，只有右侧 #content 内部滚动。
+   html/body 与双层 #app 都要锁死，否则任一层的 min-height:auto 被内容撑开就出现整页滚动条。 */
+html{height:100%;overflow:hidden}
+body{height:100%;margin:0;font:14px/1.6 "Microsoft YaHei","Segoe UI",sans-serif;color:#1f2937;background:#f5f6f8;overflow:hidden}
+/* index.html 的挂载容器与 App.vue 根元素同叫 #app，形成双层 flex；两层同为 100vh + overflow:hidden。 */
+#app{display:flex;height:100vh;width:100%;min-width:0;max-width:100%;overflow:hidden}
+#sidebar{width:210px;background:#243247;color:#dbe3ee;flex-shrink:0;padding:18px 0 0;display:flex;flex-direction:column;height:100%;box-sizing:border-box}
+/* 导航区独占剩余高度并自行滚动，把底部用户卡片挤到最下方 */
+.sidebar-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column}
+/* 侧边栏 Logo：图片 + 文字水平排列，垂直居中，图标白色填充适配深色底 */
+#sidebar .logo{display:flex;align-items:center;gap:10px;padding:0 18px 18px;font-weight:700;font-size:16px;color:#fff;border-bottom:1px solid #3a4a63;margin-bottom:12px}
+#sidebar .logo-img{width:26px;height:26px;flex:none;display:block}
+/* 导航项：图标 + 文字垂直居中，间距 10px */
+.nav-item{display:flex;align-items:center;gap:10px;padding:11px 18px;cursor:pointer;border-left:3px solid transparent;user-select:none}
+.nav-item:hover{background:#2e3e56}
+.nav-item.on{background:#33445e;border-left-color:#4c8bf5;color:#fff}
+/* 图标未选中稍暗、选中与文字同色 */
+.nav-item .nav-icon{font-size:16px;flex:none;color:#9fb0c8}
+.nav-item:hover .nav-icon{color:#dbe3ee}
+.nav-item.on .nav-icon{color:#fff}
+/* 右侧主区：min-height:0 是关键（flex 子项默认 min-height:auto 会被内容撑破），
+   overflow:hidden 把滚动职责交给内部 #content，避免 #main 与 #content 双重滚动条。 */
+#main{flex:1;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+/* 右侧唯一滚动容器：纵向、横向都由它负责；表格不再单独限高，用户一路下滑即可。
+   侧边栏 #sidebar 是兄弟节点且固定 100% 高，不跟随 #content 滚动。 */
+#content{padding:18px 22px;flex:1;min-width:0;min-height:0;width:100%;overflow:auto}
+h2{font-size:19px;margin:0 0 14px}
+.panel{background:#fff;border:1px solid #e3e7ee;border-radius:8px;padding:14px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+.row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start}
+.fld{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.fld label{font-size:12px;font-weight:500;color:#5b6577;letter-spacing:.2px}
+.req{color:#d92d20;margin-right:3px;font-weight:700}
+:where(#app) input,:where(#app) select,:where(#app) textarea{font:inherit;height:34px;border:1px solid #d8dee8;border-radius:5px;padding:6px 8px;background:#fff;color:#1f2937;width:100%;font-size:13px;transition:border-color .15s,box-shadow .15s}
+:where(#app) textarea{min-height:60px;height:auto;resize:vertical;padding-top:7px;padding-bottom:7px}
+:where(#app) select[multiple]{height:auto;min-height:82px;padding:4px}
+:where(#app) input:hover,:where(#app) select:hover,:where(#app) textarea:hover{border-color:#b8c4d6}
+:where(#app) input:focus,:where(#app) select:focus,:where(#app) textarea:focus{outline:none;border-color:#2f6fed;box-shadow:0 0 0 3px rgba(47,111,237,.12)}
+:where(#app) input[readonly]{background:#f3f5f8;color:#64748b}
+:where(#app) .btn{border:1px solid #cfd6e0;background:#fff;border-radius:5px;height:34px;padding:0 15px;cursor:pointer;font:inherit;font-size:13px;color:#243247;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+:where(#app) .btn:hover{background:#f0f4fa}
+:where(#app) .btn.primary{background:#2f6fed;border-color:#2f6fed;color:#fff;box-shadow:0 2px 6px rgba(47,111,237,.22)}
+:where(#app) .btn.primary:hover{background:#2559c9}
+:where(#app) .btn:disabled{opacity:.45;cursor:not-allowed}
+:where(#app) .btn.sm{height:26px;padding:0 9px;font-size:12px}
+:where(#app) .btn-link{border:0;background:transparent;color:#2f6fed;font-size:13px;cursor:pointer;padding:0 4px;height:34px}
+:where(#app) .btn-link:hover{text-decoration:underline}
+:where(#app) .icon-btn{border:0;background:transparent;font-size:17px;color:#8a94a6;cursor:pointer;padding:2px 6px;line-height:1}
+:where(#app) .icon-btn:hover{color:#243247}
+.toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px;flex-wrap:wrap}
+.page-head{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;gap:12px;flex-wrap:wrap}
+.page-head h2{margin:0}
+
+/* 查询区：≥1366px 四列一行；窄屏自动折行 */
+.query-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}
+.date-range{display:flex;align-items:center;gap:6px;min-width:0}
+.date-range input{min-width:0;flex:1}
+.date-range .sep{color:#8a94a6;font-size:12px;flex-shrink:0}
+.query-actions{display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid #eef1f6;flex-wrap:wrap}
+.query-actions .spacer{flex:1}
+
+/* 列表区：表格默认 width:100% 撑满父容器 + 表头吸顶 + 容器自身横向滚动
+   【重要】下面这组「项目自身表格」样式只作用于 #app 内。Element Plus 的日历/时间面板
+   是 teleported 到 body 的（在 #app 之外）；如果写成无作用域的 table{min-width:960px}，
+   这条规则会命中 .el-date-table，把日历表撑成 960px 并带上面框/吸顶/背景，必然溢出浮层。
+   用 :where(#app) 限定作用域且「不提高优先级」，后面 table.adv-table 等定宽规则仍照常生效。 */
+/* 表格区域不限高：高度随数据自然增长，纵向滚动交给 #content；横向超宽也由 #content 统一滚动，
+   这样 td/col-frozen、表头 sticky 的参照系都是同一个滚动容器。 */
+.table-wrap{padding:0;width:100%;min-width:0}
+:where(#app) table{width:100%;min-width:960px;table-layout:fixed;border-collapse:collapse;background:#fff;font-size:13px}
+/* 表头、表体统一水平 + 垂直居中（不再按内容长短区分对齐） */
+:where(#app) th,:where(#app) td{border:1px solid #e3e7ee;padding:8px 9px;text-align:center;vertical-align:middle}
+:where(#app) th{background:#f2f5fa;color:#42526e;font-weight:600;white-space:nowrap;font-size:12px;letter-spacing:.2px;text-align:center;vertical-align:middle;position:sticky;top:0;z-index:1}
+:where(#app) tr:hover td{background:#fafbfe}
+:where(#app) tbody tr:nth-child(even) td{background:#fcfdff}
+/* 冻结「操作」列（第 10 步优化）：窄屏表格横向滚动时操作列固定在右侧。
+   背景必须不透明，否则横滚时下层单元格文字会透出；用非 :where 选择器提升优先级，
+   依次覆盖基础 td / 斑马纹 / hover 的背景，保证冻结列与所在行同色且始终遮住下层。 */
+:where(#app) th.col-frozen,
+:where(#app) td.col-frozen{position:sticky;right:0}
+:where(#app) th.col-frozen{background:#f2f5fa;z-index:3;box-shadow:-2px 0 5px rgba(16,24,40,.08)}
+#app td.col-frozen{background:#fff;z-index:2;box-shadow:-2px 0 5px rgba(16,24,40,.07)}
+#app tbody tr:nth-child(even) td.col-frozen{background:#fcfdff}
+#app tbody tr:hover td.col-frozen{background:#fafbfe}
+/* 用户管理弹窗有独立表格（非 #app 内的标准表格），同样支持冻结 */
+.um-table th.col-frozen{position:sticky;right:0;background:#f5f7fa;z-index:3;box-shadow:-2px 0 5px rgba(16,24,40,.08)}
+.um-table td.col-frozen{position:sticky;right:0;background:#fff;z-index:2;box-shadow:-2px 0 5px rgba(16,24,40,.07)}
+.um-table tbody tr:nth-child(even) td.col-frozen{background:#fafbfd}
+.um-table tbody tr:hover td.col-frozen{background:#f2f6fd}
+:where(#app) td.cell-ellip{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+:where(#app) td.cell-wrap{white-space:normal;word-break:break-word}
+/* 全局表格单元格统一对齐（v-cell-align 指令统一加 cell-center）：
+   长短内容一律水平 + 垂直居中；这条放在 cell-ellip / status-cell 之后，确保覆盖基础 td 的对齐。 */
+:where(#app) td.cell-center{text-align:center;vertical-align:middle}
+/* 监管地区列：不受长短对齐影响，始终水平+垂直居中且不折行（首页 / 高级查询等所有表格） */
+:where(#app) td.region-cell{text-align:center;vertical-align:middle;white-space:nowrap}
+.empty{padding:22px;text-align:center;color:#8a94a6}
+.muted{color:#8a94a6;font-size:12px}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;background:#eef2f8;font-size:12px;color:#42526e;white-space:nowrap}
+/* 项目状态列：自适应列宽（colgroup 不写死宽度）+ 内容水平垂直居中；
+   四态用不同底色区分（状态值来自业务配置，用 data-status 属性选择器做纯样式映射，
+   未知状态自动退回 .pill 之外的默认外观，不影响任何业务逻辑）。 */
+:where(#app) td.status-cell{text-align:center;vertical-align:middle}
+.status-tag{display:inline-flex;align-items:center;justify-content:center;min-width:78px;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:500;line-height:1.5;white-space:nowrap;border:1px solid transparent;background:#eef2f8;color:#42526e}
+.status-tag[data-status="意向公示"]{background:#eaf2ff;color:#2f6fed;border-color:#c9d9fb}
+.status-tag[data-status="正在招标"]{background:#2f6fed;color:#fff;border-color:#2f6fed}
+.status-tag[data-status="终止招标"]{background:#fdecea;color:#c0261b;border-color:#f3c6bf}
+.status-tag[data-status="完成招标"]{background:#e8f7ee;color:#137a4b;border-color:#b7ebc8}
+.tip{font-size:12px;min-height:15px;margin-top:2px;color:#6b7280;line-height:1.4}
+/* 提示节点常驻（内容由 DOM 副作用写入）；无内容时不占高度，保持原布局 */
+.tip:empty{min-height:0;margin-top:0;line-height:0}
+.tip.err{color:#c0261b}
+.err-box{color:#b42318;border-color:#f0c2bc;background:#fff7f6}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 16px}
+.full{grid-column:1/-1}
+
+/* 弹窗分区与表单控件（照需求 1.5） */
+.sect-title{font-size:14px;font-weight:600;color:#243247;margin:18px 0 10px;padding-left:8px;border-left:3px solid #2f6fed}
+.sub-title{font-size:13px;font-weight:600;color:#42526e;margin:14px 0 8px;padding-left:8px;border-left:2px solid #a9bce0}
+.pkg{border:1px solid #e6eaf1;border-radius:6px;padding:12px;margin:10px 0;background:#fcfdff}
+.with-unit{display:flex;align-items:center;gap:6px}
+.with-unit input{flex:1;min-width:0}
+.unit{color:#94a3b8;font-size:12px;flex-shrink:0}
+.chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;margin:2px 12px 2px 0}
+.chk input{width:auto}
+.switch{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:#5b6577;cursor:pointer;margin-top:6px;user-select:none}
+.switch input{position:absolute;opacity:0;width:0;height:0}
+.switch .track{width:34px;height:18px;border-radius:9px;background:#cbd5e1;position:relative;transition:background .15s;flex-shrink:0}
+.switch .track:after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:transform .15s}
+.switch input:checked + .track{background:#2f6fed}
+.switch input:checked + .track:after{transform:translateX(16px)}
+.overlay{position:fixed;inset:0;background:rgba(20,28,42,.5);display:flex;align-items:flex-start;justify-content:center;padding:24px 12px;z-index:50}
+.modal{background:#fff;border-radius:8px;width:min(1020px,100%);max-height:88vh;overflow:auto;box-shadow:0 12px 40px rgba(0,0,0,.22)}
+.modal header{position:sticky;top:0;background:#fff;border-bottom:1px solid #e3e7ee;padding:12px 18px;display:flex;justify-content:space-between;align-items:center;z-index:3}
+.modal .body{padding:14px 18px}
+.modal footer{position:sticky;bottom:0;background:#fff;border-top:1px solid #e3e7ee;padding:12px 18px;display:flex;justify-content:flex-end;gap:10px;align-items:center;z-index:3}
+.toast{position:fixed;right:22px;top:16px;background:#137a4b;color:#fff;padding:9px 16px;border-radius:5px;z-index:80;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.toast.info{background:#42526e}
+
+/* 第 4 步：即时提示、评委标签、状态互斥二次确认 */
+.tip.ok{color:#137a4b}
+.tag{display:inline-flex;align-items:center;border:1px solid #d8e2f2;background:#f2f6fd;border-radius:14px;padding:3px 8px 3px 10px;margin:2px 5px 2px 0;font-size:12px}
+.tag em{font-style:normal;font-size:11px;color:#6b7a90;margin-left:6px}
+.tag-x{margin-left:7px;color:#94a3b8;font-weight:700;cursor:pointer;line-height:1}
+.tag-x:hover{color:#c0261b}
+/* 二次确认遮罩：必须限定作用域，否则会命中 Element Plus 时间面板的 .confirm 按钮 */
+:where(#app) .confirm{position:fixed;inset:0;background:rgba(20,28,42,.55);display:flex;align-items:center;justify-content:center;z-index:60}
+:where(#app) .confirm .box{background:#fff;border-radius:8px;padding:20px;width:min(460px,92%);box-shadow:0 10px 30px rgba(0,0,0,.2)}
+
+/* 第 5 步：高级查询 14 列条件区与结果区
+   表格完全复用全局 :where(#app) table 样式：table-layout:fixed + width:100%，14 列按视口均分，
+   每列内容由 .cell-wrap 自动换行 / .cell-ellip 省略，无单独列宽配置、无横向溢出。
+   交互与其它页面表格一致：高度自动撑高、#content 统一滚动、表头吸顶。 */
+.adv-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.adv-table-wrap{padding:0;width:100%;min-width:0}
+/* 高级查询表头较长（如「投标截止时间（年月日）」），允许换行以完整显示，避免被窄列截断 */
+:where(#app) .adv-table th{white-space:normal;line-height:1.35}
+
+/* 响应式 */
+@media (max-width:1365px){.query-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1280px){.adv-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.query-grid,.grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.query-grid,.adv-grid,.grid2,.grid3{grid-template-columns:1fr}}
+
+/* 第 6 步：独立信息档案 —— 录入时纯 DOM 候选下拉 */
+.archive-input{position:relative;min-width:0}
+.archive-input input{width:100%}
+/* 地址改用 textarea 后：块级显示消除 inline-block 基线间隙，候选下拉才能紧贴输入框底部 */
+.archive-input textarea{display:block;width:100%}
+.archive-dd{position:absolute;left:0;right:0;top:calc(100% + 2px);background:#fff;border:1px solid #d8dee8;border-radius:5px;box-shadow:0 4px 14px rgba(16,24,40,.12);z-index:30;max-height:190px;overflow:auto;display:none}
+.archive-opt{padding:6px 9px;cursor:pointer;display:flex;align-items:center;gap:6px;font-size:13px;white-space:nowrap}
+.archive-opt:hover{background:#eef4ff}
+.archive-name{overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
+.archive-mark{font-size:11px;color:#42526e;background:#eef2f8;border-radius:9px;padding:1px 7px;flex-shrink:0}
+.archive-none{font-size:11px;color:#94a3b8;flex-shrink:0}
+.archive-empty{padding:8px 9px;font-size:12px;color:#8a94a6}
+
+/* 第 6 步：档案只读列表页 —— 撑满工作区 + 窄屏时容器内部滚动 + 表头吸顶 */
+.archive-table-wrap{padding:0;width:100%;min-width:0}
+:where(#app) table.archive-table{min-width:980px;width:100%;table-layout:fixed}
+.archive-table td.cell-wrap{white-space:normal;word-break:break-word}
+/* 3.2.3 多值联系方式：电话/邮箱/地址用标签换行展示，逐个可见而非挤成一串 */
+.archive-val{display:inline-block;margin:1px 4px 1px 0;padding:1px 7px;border-radius:10px;background:#eef2f8;color:#42526e;font-size:12px;line-height:1.5;white-space:normal;word-break:break-all;vertical-align:middle}
+
+/* 第 7 轮：Element Plus 主题对齐（项目为浅色 UI，组件库默认亦为浅色） */
+/* 统一覆盖 --el-* 变量：主色、边框、圆角、字号与原型一致，不引入突兀的组件库蓝 */
+:root{
+  --el-color-primary:#2f6fed;
+  --el-color-primary-light-3:#6a9cf3;
+  --el-color-primary-light-5:#9dbcf7;
+  --el-color-primary-light-7:#c9d9fb;
+  --el-color-primary-light-8:#dfe9fd;
+  --el-color-primary-light-9:#f0f5ff;
+  --el-color-primary-dark-2:#2559c9;
+  --el-border-radius-base:5px;
+  --el-font-size-base:13px;
+  --el-text-color-primary:#1f2937;
+  --el-text-color-regular:#1f2937;
+  --el-text-color-secondary:#5b6577;
+  --el-text-color-placeholder:#94a3b8;
+  --el-border-color:#d8dee8;
+  --el-border-color-light:#e3e7ee;
+  --el-fill-color-blank:#fff;
+  --el-bg-color:#fff;
+  /* 日历 / 时间面板主题：让组件库面板与项目浅色 UI 同色系（标准做法只改变量，不改布局） */
+  --el-datepicker-active-color:#2f6fed;
+  --el-datepicker-bg-color:#fff;
+  --el-datepicker-border-color:#e3e7ee;
+  --el-datepicker-header-text-color:#5b6577;
+  --el-datepicker-hover-text-color:#2f6fed;
+  --el-datepicker-icon-color:#8a94a6;
+  --el-datepicker-inner-border-color:#e3e7ee;
+  --el-datepicker-inrange-bg-color:#eef4ff;
+  --el-datepicker-inrange-hover-bg-color:#dfe9fd;
+  --el-datepicker-off-text-color:#94a3b8;
+  --el-datepicker-text-color:#1f2937;
+  --el-timepicker-active-color:#2f6fed;
+  --el-timepicker-inner-border-color:#e3e7ee;
+}
+.date-field{width:100%;min-width:0}
+.date-field .el-date-editor{width:100%}
+.date-field .el-input__wrapper{min-height:34px;padding:1px 8px;border-radius:5px;box-shadow:0 0 0 1px #d8dee8 inset;background:#fff;transition:box-shadow .15s}
+.date-field .el-input__wrapper:hover{box-shadow:0 0 0 1px #b8c4d6 inset}
+.date-field .el-input__wrapper.is-focus{box-shadow:0 0 0 1px #2f6fed inset,0 0 0 3px rgba(47,111,237,.12)}
+.date-field .el-input__inner{font-family:"Microsoft YaHei","Segoe UI",sans-serif;font-size:13px;color:#1f2937;height:32px;line-height:32px}
+.date-field .el-input__prefix-inner,.date-field .el-input__suffix-inner{color:#8a94a6}
+/* 日历 / 时间弹层挂在 body 下，必须用全局 popper-class 对齐 */
+.chantion-date-popper{font-size:13px}
+.chantion-date-popper .el-date-picker__header-label,
+.chantion-date-popper .el-picker-panel__icon-btn{color:#243247}
+.chantion-date-popper .el-date-table th{color:#5b6577}
+.chantion-date-popper .el-picker-panel__footer{background:#fff}
+
+/* 第 7 步：业务配置维护页 */
+.config-tabs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.config-note{font-size:12px;color:#5b6577;line-height:1.6;background:#f7f9fc;border:1px solid #eef1f6;border-radius:5px;padding:8px 10px}
+.config-note span{display:block;margin-top:4px;color:#42526e}
+.config-actions{display:flex;align-items:center;gap:8px;margin:12px 0}
+.config-actions .spacer{flex:1}
+.config-table-wrap{padding:0;width:100%;min-width:0}
+:where(#app) table.config-table{min-width:760px;width:100%;table-layout:fixed}
+.config-table td{padding:6px 8px}
+.config-table .btn.sm{margin-right:4px}
+
+/* UI 统一化：业务配置页不再限宽居中，撑满右侧整个工作区（保留 #content 的全局边距） */
+.config-page{width:100%;max-width:none;margin:0}
+
+/* 第 9 轮紧急修复：全局 Toast 不得遮挡页面
+   ① 不再强制覆盖 ElMessage 自己的 top 定位计算（会留下视口顶部的空白块）；
+   ② pointer-events:none 作用于所有 .el-message，而不只是带 customClass 的那一条；
+   ③ 宽度按内容自适应且设上限，绝不出现全宽透明/白色长条。 */
+body > .el-message,
+body > .el-message-container,
+body > .el-overlay-message,
+.el-message{pointer-events:none !important}
+.el-message{
+  width:max-content !important;min-width:0 !important;
+  max-width:min(560px,calc(100vw - 32px)) !important;
+}
+/* 顶部居中由 left/transform 保证；top 交给 ElMessage 的 offset（toast.js 里 offset:24） */
+.el-message.chantion-message{
+  left:50% !important;transform:translate(-50%,0) !important;
+  border-radius:8px;box-shadow:0 8px 28px rgba(16,24,40,.16);
+  padding:11px 16px;z-index:4000;
+}
+.el-message.chantion-message .el-message__content{font-size:13px;line-height:1.5}
+.el-message.chantion-message .el-message__icon{font-size:16px;margin-right:8px}
+.el-message.chantion-message.el-message--success{background:#f0fdf5;border-color:#b7ebc8}
+.el-message.chantion-message.el-message--error{background:#fff5f4;border-color:#f3c6bf}
+.el-message.chantion-message.el-message--warning{background:#fffbeb;border-color:#f4dfa8}
+.chantion-message.el-message-fade-enter-active,
+.chantion-message.el-message-fade-leave-active{transition:opacity .28s ease,transform .32s cubic-bezier(.21,1.02,.43,1)}
+.chantion-message.el-message-fade-enter-from{opacity:0;transform:translate(-50%,-26px) !important}
+.chantion-message.el-message-fade-leave-to{opacity:0;transform:translate(-50%,-14px) !important}
+
+/* 日历 / 时间面板（2026-11-13 标准化，真实浏览器实测）
+   原则：**布局完全交给 Element Plus 原生** —— date 与 datetime 面板同为 322px，
+   时间选择是带边框与阴影的浮层，锚定在「选择时间」输入框下方。项目只做主题对齐。
+   历史教训：给浮层写死 430px、或强行 width:100% / overflow:visible 覆盖面板内部，
+   会把原生 datetime 面板撑宽、右侧留白、时间浮层错位，看起来「散装」；
+   日历表溢出则靠上面 :where(#app) table 的作用域隔离根治，这里只留 min-width:0 兜底。 */
+.chantion-date-popper{z-index:3000 !important}
+.chantion-date-popper table,
+.chantion-date-popper .el-date-table{
+  width:100% !important;min-width:0 !important;max-width:100% !important;
+  table-layout:fixed !important;
+}
+.chantion-date-popper .el-date-table th,
+.chantion-date-popper .el-date-table td{
+  width:auto !important;background:transparent !important;
+}
+/* 兜底：挂在 body 上的浮层容器本身绝不拦截点击，只让日历面板内部可交互，
+   避免 Element Plus 预挂载的空容器在页面顶部形成「不可见但挡点击」的白块。 */
+.chantion-date-popper{pointer-events:none !important}
+.chantion-date-popper .el-picker-panel,
+.chantion-date-popper .el-picker-panel *{pointer-events:auto !important}
+
+/* 第 8 步：删除按钮 / 删除类型标记 / 操作记录表格 */
+:where(#app) .btn.danger{color:#c0261b;border-color:#e9c3bd}
+:where(#app) .btn.danger:hover{background:#fff5f4}
+.pill.danger{background:#fdecea;color:#c0261b}
+/* 系统设置类操作：与项目操作区分的浅紫标记 */
+.pill.system{background:#eeebfb;color:#5b4bb7}
+.log-table-wrap{padding:0;width:100%;min-width:0}
+:where(#app) table.log-table{min-width:1180px;width:100%;table-layout:fixed}
+.log-table td.cell-wrap{white-space:normal;word-break:break-word}
+
+/* 第 9 步：项目详情页 —— 只读报告风格，纯文本、无输入框边框、空值统一半角 - */
+.dt-page{padding-bottom:8px}
+.dt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.dt-head-main{display:flex;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.dt-title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dt-title{font-size:20px;font-weight:600;color:#243247;margin:0;word-break:break-word}
+.dt-meta{font-size:12px;color:#8a94a6}
+.dt-loading{padding:22px;color:#8a94a6}
+
+.dt-card{background:#fff;border:1px solid #e3e7ee;border-radius:8px;padding:14px 18px 18px;margin-bottom:14px;box-shadow:0 2px 10px rgba(16,24,40,.05)}
+.dt-card-title{display:flex;align-items:center;gap:10px;margin:0 0 14px;padding-left:9px;border-left:3px solid #2f6fed;font-size:14px;font-weight:600;color:#243247;line-height:1.4}
+.dt-card-sub{font-size:12px;font-weight:400;color:#8a94a6}
+.dt-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 22px}
+.dt-full{grid-column:1/-1}
+.dt-block{padding-top:2px}
+
+.dt-item{min-width:0}
+.dt-label{font-size:12px;color:#8a94a6;line-height:1.5;margin-bottom:2px}
+.dt-value{font-size:14px;color:#1f2937;line-height:1.6;word-break:break-word;white-space:pre-wrap}
+.dt-empty{color:#b0b8c6}
+.dt-link{color:#2f6fed;text-decoration:none;border-bottom:1px solid rgba(47,111,237,.35);word-break:break-all}
+.dt-link:hover{color:#2559c9;border-bottom-color:#2559c9}
+
+.dt-k{color:#8a94a6;margin-right:6px;font-size:12px}
+.dt-winner{display:flex;flex-direction:column;gap:2px}
+.dt-winner-row{font-size:14px;line-height:1.6;word-break:break-word}
+
+.dt-pkg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;width:100%}
+.dt-pkg{background:#fbfcfe;border:1px solid #e6eaf1;border-radius:6px;padding:10px 12px;min-width:0}
+.dt-pkg-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;padding-bottom:7px;border-bottom:1px solid #eef1f6}
+.dt-pkg-head b{font-size:13px;color:#243247;font-weight:600;white-space:nowrap}
+.dt-pkg-name{font-size:12px;color:#5b6577;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.dt-pkg-rows{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px}
+.dt-pkg-lines{display:flex;flex-direction:column;gap:6px}
+.dt-pkg-cell{font-size:13px;color:#1f2937;min-width:0;word-break:break-word}
+.dt-line{font-size:13px;color:#1f2937;line-height:1.6;word-break:break-word}
+.dt-pkg-winner{margin-top:8px;padding-top:8px;border-top:1px dashed #e6eaf1}
+.dt-tags{display:inline-flex;flex-wrap:wrap;gap:4px}
+.dt-tag{display:inline-block;padding:1px 8px;border-radius:10px;background:#eef2f8;color:#42526e;font-size:12px}
+
+.dt-judges{display:flex;flex-wrap:wrap;gap:6px}
+.dt-judge{display:inline-flex;align-items:center;gap:5px;border:1px solid #d8e2f2;background:#f2f6fd;border-radius:14px;padding:3px 9px;font-size:13px;color:#243247}
+.dt-judge em{font-style:normal;font-size:11px;color:#42526e;background:#e3ecfb;border-radius:9px;padding:1px 6px}
+
+@media (max-width:1100px){.dt-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:900px){.dt-pkg-grid{grid-template-columns:1fr}}
+@media (max-width:680px){.dt-grid{grid-template-columns:1fr}.dt-head{align-items:flex-start}}
+
+/* 第 10 步：全国三级行政区划级联选择器（与项目 34px 输入框视觉对齐） */
+.region-picker{width:100%;min-width:0}
+.region-picker .el-cascader{width:100%}
+.region-picker .el-input__wrapper{min-height:34px;padding:1px 8px;border-radius:5px;box-shadow:0 0 0 1px #d8dee8 inset;background:#fff;transition:box-shadow .15s}
+.region-picker .el-input__wrapper:hover{box-shadow:0 0 0 1px #b8c4d6 inset}
+.region-picker .el-input__wrapper.is-focus{box-shadow:0 0 0 1px #2f6fed inset,0 0 0 3px rgba(47,111,237,.12)}
+.region-picker .el-input__inner{font-family:"Microsoft YaHei","Segoe UI",sans-serif;font-size:13px;color:#1f2937;height:32px;line-height:32px}
+.region-picker .el-input__suffix-inner{color:#8a94a6}
+.region-fallback{margin-top:3px;font-size:11px;line-height:1.4;color:#8a94a6}
+.region-fallback b{color:#42526e;font-weight:600}
+.region-loading{box-sizing:border-box;height:34px;padding:7px 8px;border:1px solid #d8dee8;border-radius:5px;background:#fff;font-size:12px;color:#8a94a6}
+
+/* 第 9 步：侧边栏底部用户信息 + 鉴权弹窗（深色侧栏专用，浅色弹窗复用全局 .btn/.fld） */
+/* ElDropdown 会在已登录卡片外包一层 wrapper（inline-block、贴导航下方），
+   必须让 wrapper 本身 display:block + width:100% + margin-top:auto 才能真正撑满并钉在底部 */
+.su-dropdown{display:block;width:100%;flex-shrink:0;margin-top:auto}
+/* 用户卡片：顶部分割线与导航隔开，padding + 圆角胶囊感，整卡可交互 */
+.side-user-bar{flex-shrink:0;margin-top:auto;border-top:1px solid rgba(255,255,255,.1);padding:8px 12px;border-radius:6px;display:flex;align-items:center;cursor:pointer;user-select:none;transition:background .18s}
+.side-user-bar:hover{background:rgba(255,255,255,.05)}
+/* 已登录：头像 -> 用户名 -> 角色标签 -> 下拉箭头，单行居中，统一 gap:8px，箭头 margin-left:auto 推到最右 */
+.su-logged{gap:8px;width:100%;min-width:0}
+.su-avatar{width:28px;height:28px;flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:#fff;background:linear-gradient(135deg,#4c8bf5,#2f6fed)}
+.su-avatar.default-avatar{background:#3a4a63;color:#9fb0c8}
+.su-name{flex:0 1 auto;min-width:0;max-width:100px;font-size:13px;font-weight:500;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.su-role{display:inline-block;flex:none;font-size:10px;line-height:16px;padding:0 4px;border-radius:4px;white-space:nowrap}
+.su-role.admin{background:#6b4a1f;color:#ffcf8a;border:1px solid rgba(255,207,138,.28)}
+.su-role.normal{background:#1d3a5c;color:#8fc0ff;border:1px solid rgba(143,192,255,.28)}
+.su-role.visitor{background:rgba(255,255,255,.09);color:#9fb0c8;border:1px solid rgba(255,255,255,.08)}
+.su-caret{flex:none;font-size:12px;color:#8a94a6;display:flex;align-items:center;margin-left:auto}
+/* 未登录：头像 / 幽灵登录按钮 / 访客标签单行居中，统一 gap:8px */
+.guest-card{justify-content:center;gap:8px}
+.su-login-btn{border:1px solid rgba(143,192,255,.45);background:rgba(47,111,237,.12);color:#bcd8ff;border-radius:4px;height:24px;padding:0 10px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap;flex:none;transition:background .18s,border-color .18s}
+.su-login-btn:hover{background:rgba(47,111,237,.28);border-color:rgba(143,192,255,.75)}
+/* 登录 / 修改密码弹窗表单：复用浅色主题，垂直间距统一 */
+.auth-form{display:flex;flex-direction:column;gap:14px;padding:4px 2px}
+.auth-form .fld label{color:#5b6577}
+.auth-error{background:#fef0f0;border:1px solid #fbc4c4;color:#c45656;border-radius:5px;padding:7px 10px;font-size:12px;line-height:1.5}
+.auth-hint{font-size:12px;color:#8a94a6;line-height:1.6}
+/* 用户管理弹窗：标题栏与表格在浅色主题下与全局一致 */
+.user-manage-dialog .el-dialog__header{border-bottom:1px solid #eef1f6;margin-right:0;padding-bottom:14px}
+.user-manage-dialog .el-dialog__body{padding-top:14px}
+/* 弹窗被 teleport 到 body，不受 :where(#app) 约束：补齐弹窗内原生按钮/输入框样式 */
+.el-overlay .btn{border:1px solid #cfd6e0;background:#fff;border-radius:5px;height:34px;padding:0 15px;cursor:pointer;font-family:inherit;font-size:13px;color:#243247;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:5px}
+.el-overlay .btn:hover{background:#f0f4fa}
+.el-overlay .btn.primary{background:#2f6fed;border-color:#2f6fed;color:#fff;box-shadow:0 2px 6px rgba(47,111,237,.22)}
+.el-overlay .btn.primary:hover{background:#2559c9}
+.el-overlay .btn.danger{color:#c0261b;border-color:#e9c3bd}
+.el-overlay .btn.danger:hover{background:#fff5f4}
+.el-overlay .btn.sm{height:26px;padding:0 9px;font-size:12px}
+.el-overlay .btn:disabled{opacity:.45;cursor:not-allowed}
+.auth-form input:not([class*="el-"]),.auth-form textarea{font-family:inherit;height:34px;border:1px solid #d8dee8;border-radius:5px;padding:6px 8px;background:#fff;color:#1f2937;width:100%;font-size:13px;box-sizing:border-box}
+.auth-form input:not([class*="el-"]):focus,.auth-form textarea:focus{outline:none;border-color:#2f6fed;box-shadow:0 0 0 3px rgba(47,111,237,.12)}
+
+/* ===== 第 10 步：参与项目数据看板 ===== */
+.dash-page{width:100%}
+.dash-head{margin-bottom:16px}
+.dash-title-row{display:flex;align-items:center;gap:10px;margin-top:10px}
+.dash-title{font-size:20px;margin:0;color:#1f2937}
+.dash-type-tag{display:inline-block;font-size:11px;line-height:20px;padding:0 9px;border-radius:10px;background:#eaf1fb;color:#2f6fed;border:1px solid #d3e2fb}
+.dash-sub{font-size:12px;color:#8a94a6;margin-top:6px}
+.dash-loading{padding:40px;text-align:center;color:#8a94a6}
+/* 汇总卡片：大数字 + 小单位，四种色调区分 */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px}
+.stat-card{position:relative;background:#fff;border:1px solid #e3e7ee;border-radius:10px;padding:18px 20px;overflow:hidden;box-shadow:0 1px 3px rgba(16,24,40,.04);transition:transform .18s,box-shadow .18s}
+.stat-card:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(16,24,40,.09)}
+.stat-label{font-size:12px;color:#5b6577;margin-bottom:10px;letter-spacing:.2px}
+.stat-value-row{display:flex;align-items:baseline;gap:5px}
+.stat-value{font-size:30px;font-weight:700;line-height:1;color:#2f6fed;font-variant-numeric:tabular-nums}
+.stat-unit{font-size:12px;color:#8a94a6}
+.stat-accent{position:absolute;left:0;top:0;bottom:0;width:3px;background:#2f6fed}
+.stat-tone-1 .stat-value{color:#0f9d6e}.stat-tone-1 .stat-accent{background:#0f9d6e}
+.stat-tone-2 .stat-value{color:#7c4dff}.stat-tone-2 .stat-accent{background:#7c4dff}
+.stat-tone-3 .stat-value{color:#e8833a}.stat-tone-3 .stat-accent{background:#e8833a}
+/* 分布图表：纯 UI 占比条 */
+.chart-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:16px}
+.chart-card{padding:16px 18px;margin-bottom:0}
+.chart-title{font-size:14px;font-weight:600;color:#243247;margin-bottom:14px;padding-left:9px;border-left:3px solid #2f6fed}
+.chart-empty{color:#8a94a6;font-size:12px;padding:8px 0}
+.bar-list{display:flex;flex-direction:column;gap:12px}
+.bar-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;gap:10px}
+.bar-name{font-size:13px;color:#374151;display:flex;align-items:center;gap:7px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-rank{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;flex:none;border-radius:4px;background:#eef2f8;color:#5b6577;font-size:11px}
+.bar-num{font-size:12px;color:#5b6577;flex:none;font-variant-numeric:tabular-nums}
+.bar-num em{font-style:normal;color:#8a94a6;margin-left:4px}
+.bar-track{height:9px;border-radius:5px;background:#f0f3f8;overflow:hidden}
+.bar-fill{height:100%;border-radius:5px;background:#2f6fed;width:0;transition:width .7s cubic-bezier(.22,.61,.36,1)}
+.bar-tone-1{background:#0f9d6e}.bar-tone-2{background:#7c4dff}.bar-tone-3{background:#e8833a}.bar-tone-4{background:#d4537e}
+/* 明细表 */
+.detail-head{display:flex;align-items:baseline;gap:10px;margin-bottom:12px}
+.detail-head h3{font-size:15px;margin:0;color:#243247}
+.detail-count{font-size:12px;color:#8a94a6}
+.dash-table{width:100%;border-collapse:collapse;font-size:13px;min-width:1000px}
+.dash-table th{background:#f5f7fa;color:#3b4658;font-weight:500;text-align:center;padding:10px;border-bottom:1px solid #e3e7ee;white-space:nowrap;position:sticky;top:0;z-index:1}
+.dash-table td{padding:10px;text-align:center;border-bottom:1px solid #eef1f6;vertical-align:middle}
+.dash-table tbody tr:hover{background:#fafbfd}
+.dash-table .dash-name{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:left}
+.dash-table .dash-amount{font-weight:600;color:#0f9d6e;font-variant-numeric:tabular-nums}
+.dash-table .empty{color:#8a94a6;padding:24px 0}
+/* 参与角色 Tag：一眼看懂参与方式 */
+.role-tag{display:inline-block;font-size:11px;line-height:19px;padding:0 8px;border-radius:4px;white-space:nowrap}
+.role-tag.lead{background:#eaf1fb;color:#2f6fed;border:1px solid #d3e2fb}
+.role-tag.member{background:#f3edff;color:#7c4dff;border:1px solid #e4d9ff}
+.role-tag.split{background:#fff3e8;color:#c96a1f;border:1px solid #f7ddc0}
+.role-tag.other{background:#eef2f8;color:#5b6577}
+/* 档案名称链接：暗示可进入看板 */
+button.archive-name-link{border:0;background:transparent;color:#2f6fed;cursor:pointer;padding:0;font:inherit;font-size:13px;text-align:left}
+button.archive-name-link:hover{text-decoration:underline;color:#2559c9}
+
+/* ===== 第 11 步：采购单位情报看板（ECharts + 榜单） ===== */
+.section-title{font-size:14px;font-weight:600;color:#243247;margin:18px 0 12px;padding-left:10px;border-left:3px solid #2f6fed}
+.echarts-grid{grid-template-columns:repeat(2,minmax(300px,1fr))}
+.chart-card-wide{grid-column:1 / -1}
+.chart-title-hint{font-size:11px;font-weight:400;color:#8a94a6;margin-left:6px}
+/* 榜单卡片与排名行 */
+.rank-grid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px}
+.rank-card{padding:16px 18px;margin-bottom:0}
+.rank-card-wide{grid-column:1 / -1}
+.rank-list{display:flex;flex-direction:column;gap:11px}
+.rank-row{display:flex;align-items:center;gap:10px}
+.rank-medal{width:22px;height:22px;flex:none;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:#eef2f8;color:#5b6577}
+.rank-medal.medal-1{background:#fff1d6;color:#c9861a}
+.rank-medal.medal-2{background:#e8edf4;color:#6b7a90}
+.rank-medal.medal-3{background:#fae9dc;color:#b4703c}
+.rank-main{flex:1;min-width:0}
+.rank-name{font-size:13px;color:#374151;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.rank-badge{font-size:10px;line-height:16px;padding:0 5px;border-radius:4px;background:#2f6fed;color:#fff;flex:none}
+.rank-attr{font-size:10px;line-height:16px;padding:0 6px;border-radius:4px;background:#eef2f8;color:#5b6577;border:1px solid #e3e7ee;flex:none}
+.rank-bar{height:7px;border-radius:4px;background:#f0f3f8;overflow:hidden}
+.rank-bar-fill{height:100%;border-radius:4px;background:#2f6fed;transition:width .7s cubic-bezier(.22,.61,.36,1)}
+.rank-bar-fill.rank-tone-1{background:#0f9d6e}
+.rank-bar-fill.rank-tone-2{background:#7c4dff}
+.rank-value{font-size:12px;color:#5b6577;flex:none;min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
+@media(max-width:900px){.echarts-grid,.rank-grid{grid-template-columns:1fr}}
+/* 第 13 步：竞争对手画像 —— 三列榜单 + 参与深度 Tag */
+.rank-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.depth-tag{display:inline-block;font-size:11px;line-height:19px;padding:0 7px;border-radius:4px;white-space:nowrap;max-width:130px;overflow:hidden;text-overflow:ellipsis;vertical-align:middle}
+.depth-tag.full{background:#eaf1fb;color:#2f6fed;border:1px solid #d3e2fb}
+.depth-tag.split{background:#fff3e8;color:#c96a1f;border:1px solid #f7ddc0}
+@media(max-width:1100px){.rank-grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:760px){.rank-grid-3{grid-template-columns:1fr}}
+/* 看板年份筛选：与标题同行右侧，轻量下拉 */
+.dash-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.year-filter{display:flex;align-items:center;gap:8px;padding-top:4px;flex:none}
+.year-filter-label{font-size:12px;color:#8a94a6;white-space:nowrap}
+.year-select{height:32px;padding:0 26px 0 10px;border:1px solid #d8dee8;border-radius:5px;background:#fff;color:#374151;font:inherit;font-size:13px;cursor:pointer;outline:none;transition:border-color .18s,box-shadow .18s}
+.year-select:hover{border-color:#b8c4d6}
+.year-select:focus{border-color:#2f6fed;box-shadow:0 0 0 3px rgba(47,111,237,.12)}
+@media(max-width:640px){.dash-head{flex-direction:column}.year-filter{padding-top:0}}
+/* 第 15 步：地区热力地图整行面板 */
+.map-panel{margin-bottom:14px;padding:14px 18px}
+.map-hint{float:right;font-size:11px;font-weight:400;color:#8a94a6;line-height:20px}
