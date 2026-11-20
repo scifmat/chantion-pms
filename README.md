@@ -1,9 +1,6 @@
 # ChanTion PMS
 
-![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodejs&logoColor=white)
-![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white)
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
+![Vue 3](https://img.shields.io/badge/Vue-3-4FC08D?logo=vuedotjs&logoColor=white) ![Node.js](https://img.shields.io/badge/Node.js-20%2B-339933?logo=nodejs&logoColor=white) ![SQLite](https://img.shields.io/badge/SQLite-003B57?logo=sqlite&logoColor=white) ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 一款面向企业招投标与项目协作的轻量级、全流程数字化工作台。
 
