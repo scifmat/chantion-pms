@@ -62,8 +62,10 @@ cp server/.env.example server/.env
 sudo npm install -g pm2
 cd server
 pm2 start app.js --name chantion-pms
-pm2 startup && pm2 save
+pm2 save
 ```
+
+如需开机自启，执行 `pm2 startup`，它会输出一条 `sudo env PATH=... pm2 startup systemd ...` 命令——**复制该命令再手动执行一次**才会真正生效，随后再运行 `pm2 save`。
 
 ### 4. 配置 Nginx 反向代理
 
