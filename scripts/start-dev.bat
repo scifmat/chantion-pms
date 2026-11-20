@@ -18,7 +18,21 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [1/4] Checking backend dependencies ...
+echo [1/5] Checking local environment files ...
+if not exist "server\.env" (
+  copy /Y "server\.env.example" "server\.env" >nul
+  echo       Created server\.env from template - please change the password/secret before going online.
+) else (
+  echo       server\.env OK
+)
+if not exist "client\.env" (
+  copy /Y "client\.env.example" "client\.env" >nul
+  echo       Created client\.env from template.
+) else (
+  echo       client\.env OK
+)
+
+echo [2/5] Checking backend dependencies ...
 if not exist "server\node_modules\express" (
   pushd server
   call npm install --no-audit --no-fund
@@ -33,7 +47,7 @@ if not exist "server\node_modules\express" (
   echo       OK (already installed)
 )
 
-echo [2/4] Checking frontend dependencies ...
+echo [3/5] Checking frontend dependencies ...
 if not exist "client\node_modules\vue" (
   pushd client
   call npm install --no-audit --no-fund
@@ -48,10 +62,10 @@ if not exist "client\node_modules\vue" (
   echo       OK (already installed)
 )
 
-echo [3/4] Starting BACKEND  (API + SQLite, port 3000) ...
+echo [4/5] Starting BACKEND  (API + SQLite, port 3000) ...
 start "ChanTion BACKEND - do not close" cmd /k "cd /d ""%ROOT%\server"" && npm start"
 
-echo [4/4] Starting FRONTEND (page, port 5173) ...
+echo [5/5] Starting FRONTEND (page, port 5173) ...
 start "ChanTion FRONTEND - do not close" cmd /k "cd /d ""%ROOT%\client"" && npm run dev"
 
 echo.

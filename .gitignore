@@ -19,7 +19,8 @@ server/backup/
 _test/
 
 
-# 本地私有环境变量副本（server/.env 与 client/.env 为本轮开箱即用的默认值，保留）
+# 本地环境配置（含密码/密钥，不进版本库；首次运行从 .env.example 复制）
+.env
 .env.local
 *.log
 .DS_Store
