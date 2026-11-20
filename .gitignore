@@ -32,5 +32,8 @@ desktop.ini
 .idea/
 *.tmp
 
+# 本地辅助脚本（仅本机开发使用，不进版本库）
+scripts/
+
 # AI助手数据目录
 .workbuddy/
