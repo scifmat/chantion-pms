@@ -15,8 +15,20 @@ server/backup/
 02-数据/
 03-归档/
 
-# 测试数据、文件
-_test/
+# 测试数据、文件：默认忽略，仅放行 CI 需要的脚本与 fixture
+_test/*
+!_test/scripts/
+_test/scripts/*
+!_test/scripts/*.mjs
+!_test/scripts/fixture-ci.json
+
+# 数据库与截图等二进制产物（防止误入库）
+*.db
+*.db-wal
+*.db-shm
+*_test.db
+*_test.db-wal
+*_test.db-shm
 
 
 # 本地环境配置（含密码/密钥，不进版本库；首次运行从 .env.example 复制）
@@ -32,8 +44,8 @@ desktop.ini
 .idea/
 *.tmp
 
-# 本地辅助脚本（仅本机开发使用，不进版本库）
-scripts/
+# 本地辅助脚本（仅本机开发使用，不进版本库；锚定根目录，避免误伤 _test/scripts/）
+/scripts/
 
 # AI助手数据目录
 .workbuddy/

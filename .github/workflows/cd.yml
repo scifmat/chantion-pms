@@ -1,0 +1,134 @@
+name: CD
+
+# 仅手动触发；生产环境审批由 GitHub Environment "production" 提供。
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Deploy branch (origin/<ref>), e.g. main'
+        required: false
+        default: main
+        type: string
+
+environment:
+  name: production
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+env:
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+  TZ: Asia/Shanghai
+
+jobs:
+  deploy:
+    name: Deploy to Ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          fingerprint: ${{ secrets.SSH_KNOWN_HOSTS }}
+          port: ${{ vars.SSH_PORT || '22' }}
+          command_timeout: 35m
+          script: |
+            set -euo pipefail
+
+            export DEPLOY_PATH="${{ vars.DEPLOY_PATH }}"
+            export PM2_APP_NAME="${{ vars.PM2_APP_NAME }}"
+            export DB_PATH_VALUE="${{ vars.DB_PATH || './data/chantion.db' }}"
+            export BACKUP_DIR="${{ vars.BACKUP_DIR || '/var/backups/chantion' }}"
+            export BACKUP_RETENTION_DAYS="${{ vars.BACKUP_RETENTION_DAYS || '30' }}"
+            export HEALTHCHECK_URL="${{ vars.HEALTHCHECK_URL || 'http://127.0.0.1:3000/api/projects' }}"
+            export SERVER_ENV="${{ secrets.SERVER_ENV }}"
+            export DEPLOY_REF="${{ inputs.ref || 'main' }}"
+
+            rollback() {
+              echo "[rollback] restoring previous revision ${PREV_SHA:-unknown}"
+              cd "$DEPLOY_PATH"
+              if [ -n "${PREV_SHA:-}" ]; then
+                git reset --hard "$PREV_SHA" >/dev/null 2>&1 || true
+              fi
+              (cd server && npm ci --omit=dev >/dev/null 2>&1) || true
+              (cd client && npm ci >/dev/null 2>&1 && npm run build >/dev/null 2>&1) || true
+              (cd server && (pm2 reload "$PM2_APP_NAME" --update-env >/dev/null 2>&1 || pm2 start app.js --name "$PM2_APP_NAME" >/dev/null 2>&1)) || true
+              echo "[rollback] database snapshot kept at ${LAST_BACKUP:-<none>} for manual restore if needed"
+            }
+            trap 'rollback' ERR
+
+            echo "[deploy] target=$DEPLOY_PATH ref=$DEPLOY_REF"
+            cd "$DEPLOY_PATH"
+            PREV_SHA=$(git rev-parse HEAD)
+            git fetch origin --tags --prune
+            git checkout -f -B "$DEPLOY_REF" "origin/$DEPLOY_REF"
+            git reset --hard "origin/$DEPLOY_REF"
+
+            printf '%s\n' "$SERVER_ENV" > server/.env
+            chmod 600 server/.env
+
+            echo "[deploy] backing up SQLite before dependency install / migration"
+            (cd server && node - <<'NODE'
+            const fs = require('fs')
+            const path = require('path')
+            const raw = process.env.DB_PATH_VALUE || './data/chantion.db'
+            const dbPath = path.isAbsolute(raw) ? raw : path.resolve(process.cwd(), raw)
+            const backupDir = process.env.BACKUP_DIR
+            if (!fs.existsSync(dbPath)) {
+              console.log('[backup] no database yet (first deploy), skip')
+              process.exit(0)
+            }
+            fs.mkdirSync(backupDir, { recursive: true })
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+            const dest = path.join(backupDir, 'chantion-' + stamp + '.db')
+            const Database = require('better-sqlite3')
+            const src = new Database(dbPath, { readonly: true })
+            src.backup(dest).then(function () {
+              src.close()
+              fs.writeFileSync(path.join(process.env.DEPLOY_PATH, '.last-backup'), dest)
+              console.log('[backup] ' + dest)
+              const keep = Number(process.env.BACKUP_RETENTION_DAYS || 30)
+              const cutoff = Date.now() - keep * 24 * 60 * 60 * 1000
+              fs.readdirSync(backupDir)
+                .filter(function (f) { return /^chantion-.*\.db$/.test(f) })
+                .forEach(function (f) {
+                  const p = path.join(backupDir, f)
+                  if (fs.statSync(p).mtimeMs < cutoff) { fs.unlinkSync(p); console.log('[backup] removed ' + f) }
+                })
+            }).catch(function (err) { console.error(err); process.exit(1) })
+            NODE
+            )
+            if [ -f .last-backup ]; then LAST_BACKUP=$(cat .last-backup); fi
+
+            echo "[deploy] installing server dependencies"
+            (cd server && npm ci --omit=dev)
+
+            echo "[deploy] building frontend"
+            (cd client && npm ci && npm run build)
+
+            echo "[deploy] reloading PM2"
+            cd "$DEPLOY_PATH/server"
+            if pm2 describe "$PM2_APP_NAME" >/dev/null 2>&1; then
+              pm2 reload "$PM2_APP_NAME" --update-env
+            else
+              pm2 start app.js --name "$PM2_APP_NAME"
+            fi
+            pm2 save
+
+            echo "[deploy] health check"
+            ok=0
+            for i in $(seq 1 30); do
+              if curl -fsS "$HEALTHCHECK_URL" >/dev/null; then ok=1; break; fi
+              sleep 2
+            done
+            if [ "$ok" -ne 1 ]; then
+              echo "[deploy] health check failed"
+              exit 1
+            fi
+            trap - ERR
+            echo "[deploy] done"

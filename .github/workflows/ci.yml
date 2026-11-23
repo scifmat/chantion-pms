@@ -1,0 +1,99 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+  NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
+  TZ: Asia/Shanghai
+  ADMIN_USER: admin
+  ADMIN_PASSWORD: admin123
+  JWT_SECRET: ci-only-secret-do-not-use-in-production
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm ci
+
+      - name: Install client dependencies
+        working-directory: client
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: client
+        run: npm run build
+
+      - name: Seed CI database from controlled fixture
+        run: node _test/scripts/seed-ci-db.mjs
+
+      # 纯 Node 单测：不启动服务、不依赖数据库副本
+      - name: Unit tests
+        run: |
+          node _test/scripts/test-amount-parse.mjs
+          node _test/scripts/test-judge-parse.mjs
+          node _test/scripts/test-date-input.mjs
+          node _test/scripts/test-export-fields.mjs
+          node _test/scripts/test-querybuilder.mjs
+
+      # 集成测试：各自复制 fixture 到独立测试库并起独立后端。
+      # 固定端口 3100~3117，必须串行；CDP 浏览器测试依赖本地 Chrome，CI 不运行。
+      - name: Integration tests
+        run: |
+          node _test/scripts/test-auth.mjs
+          node _test/scripts/test-archives.mjs
+          node _test/scripts/test-default-sort.mjs
+          node _test/scripts/test-export-api.mjs
+          node _test/scripts/test-export-columns.mjs
+          node _test/scripts/test-export-conditions.mjs
+          node _test/scripts/test-export-trunc.mjs
+          node _test/scripts/test-home-export.mjs
+          node _test/scripts/test-stats.mjs
+          node _test/scripts/test-agency-intel.mjs
+          node _test/scripts/test-buyer-intel.mjs
+          node _test/scripts/test-competitor-profile.mjs
+          node _test/scripts/test-final-polish.mjs
+          node _test/scripts/test-global-dashboard.mjs
+          node _test/scripts/test-oplog-permission.mjs
+          node _test/scripts/test-system-settings.mjs
+          node _test/scripts/test-year-filter.mjs
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            server/data/*.db
+            server/data/*.db-wal
+            server/data/*.db-shm
+            *.log
+            server/*.log

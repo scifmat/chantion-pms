@@ -1,0 +1,15 @@
+# 统一为 LF，避免 Windows CRLF 在 Linux CI 中导致脚本/配置异常
+* text=auto eol=lf
+
+# 二进制资源不参与换行转换
+*.db binary
+*.db-wal binary
+*.db-shm binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
