@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   NPM_CONFIG_REGISTRY: https://registry.npmjs.org/
   TZ: Asia/Shanghai
   ADMIN_USER: admin
@@ -38,9 +38,17 @@ jobs:
             server/package-lock.json
             client/package-lock.json
 
+      # better-sqlite3 是原生模块，预编译包不匹配时会走源码编译；补齐工具链避免 CI 段错误
+      - name: Install native build toolchain
+        run: sudo apt-get update && sudo apt-get install -y build-essential python3
+
       - name: Install server dependencies
         working-directory: server
         run: npm ci
+
+      - name: Rebuild native modules
+        working-directory: server
+        run: npm rebuild better-sqlite3
 
       - name: Install client dependencies
         working-directory: client
