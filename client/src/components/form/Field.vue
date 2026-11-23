@@ -43,9 +43,11 @@ function renderTip() {
   const el = tipEl.value
   if (!el) return
   const e = (errors && props.path) ? (errors[props.path] || '') : ''
-  const h = (hints && props.path) ? (hints[props.path] || '') : ''
+  const raw = (hints && props.path) ? (hints[props.path] || '') : ''
+  const hintErr = !!(raw && typeof raw === 'object' && raw.level === 'error')
+  const h = (raw && typeof raw === 'object') ? (raw.text || '') : raw
   el.textContent = e || h
-  el.className = 'tip' + (e ? ' err' : (h ? ' ok' : ''))
+  el.className = 'tip' + ((e || hintErr) ? ' err' : (h ? ' ok' : ''))
 }
 watchEffect(renderTip, { flush: 'sync' })
 onMounted(renderTip)

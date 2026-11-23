@@ -55,7 +55,7 @@ const props = defineProps({
   partyName: { type: String, default: '' },        // 当前单位 / 机构名称
   multiline: { type: Boolean, default: false }     // 地址用 textarea
 })
-const emit = defineEmits(['update:modelValue', 'pick', 'enter', 'composing'])
+const emit = defineEmits(['update:modelValue', 'pick', 'enter', 'composing', 'blur'])
 
 const inputEl = ref(null)
 const ddEl = ref(null)
@@ -187,11 +187,13 @@ function onCompositionEnd(e) {
 }
 function onFocus() { schedule(displayValue.value) }
 function onBlur() {
+  emit('blur')   // 点选候选用的是 mousedown + preventDefault，不会触发 input 的 blur
   clearTimeout(blurTimer)
   blurTimer = setTimeout(hideDD, 150)
 }
 function onKeydown(e) {
   if (e.key === 'Escape') { hideDD(); return }
+  if (composing || e.isComposing) return   // 输入法确认候选的 Enter 不能触发识别
   if (e.key === 'Enter' && props.enter) { e.preventDefault(); emit('enter') }
 }
 function pick(item) {

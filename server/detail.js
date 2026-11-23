@@ -25,10 +25,35 @@ function normalizePackage(p) {
   };
 }
 
+// 服务端复核（轻量）：只做去控制符 / 去空白 / 限长 / 属性布尔化，不做复杂断句，
+// 避免与前端 parseJudges 重复实现；同名合并取或，与前端标签口径一致。
 function normalizeJudge(j) {
-  if (typeof j === 'string') return { name: j, leader: false, owner: false };
+  if (typeof j === 'string') j = { name: j };
   j = asObj(j);
-  return { name: String(j.name == null ? '' : j.name), leader: !!j.leader, owner: !!j.owner };
+  const name = String(j.name == null ? '' : j.name)
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .trim()
+    .slice(0, 60);
+  return { name: name, leader: !!j.leader, owner: !!j.owner };
+}
+
+function normalizeJudges(raw) {
+  const seen = new Map();
+  const out = [];
+  (Array.isArray(raw) ? raw : []).forEach(function (item) {
+    const j = normalizeJudge(item);
+    if (!j.name) return;
+    const key = j.name.replace(/\s+/g, '');
+    const prev = seen.get(key);
+    if (prev) {
+      prev.leader = prev.leader || j.leader;
+      prev.owner = prev.owner || j.owner;
+    } else {
+      seen.set(key, j);
+      out.push(j);
+    }
+  });
+  return out;
 }
 
 function mergeDetail(input) {
@@ -58,7 +83,7 @@ function mergeDetail(input) {
       winner: normalizeWinner(c.winner),
       isSplit: !!c.isSplit,
       packages: Array.isArray(c.packages) ? c.packages.map(normalizePackage) : [],
-      judges: Array.isArray(c.judges) ? c.judges.map(normalizeJudge) : [],
+      judges: normalizeJudges(c.judges),
       url: String(c.url == null ? '' : c.url)
     },
     operationLog: Array.isArray(src.operationLog) ? src.operationLog : []

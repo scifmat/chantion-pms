@@ -39,7 +39,16 @@ export function useValidation(form, options = {}) {
 
   // 值不变就不写 reactive，减少输入过程中的重渲染调度
   function setError(path, msg) { if (msg) { if (errors[path] !== msg) errors[path] = msg } else delete errors[path] }
-  function setHint(path, msg) { if (msg) { if (hints[path] !== msg) hints[path] = msg } else delete hints[path] }
+  // hint 支持 { text, level: 'error' }：输入阶段即可标红，又不进 errors（不会触发整表重渲染/吞字）
+  function sameHint(a, b) {
+    if (a === b) return true
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object') return false
+    return a.text === b.text && a.level === b.level
+  }
+  function setHint(path, msg) {
+    if (!msg) { delete hints[path]; return }
+    if (!sameHint(hints[path], msg)) hints[path] = msg
+  }
   function register(path, rule, get) { registry.set(path, { rule: rule, get: get }) }
   function unregister(path) {
     registry.delete(path); setError(path, ''); setHint(path, '')
@@ -139,13 +148,14 @@ export function useValidation(form, options = {}) {
     } else if (isAmount) {
       const a = V.parseAmount(v)
       // 输入阶段只写 hints（由 Field 的 sync watchEffect 纯 DOM 副作用消费）。
-      // 绝不写 errors：blocking computed 会让 ProjectForm 重渲染，同样会回退 el.value。
+      // 无法识别时用 level:'error' 的 hint 即时标红，但绝不写 errors：
+      // blocking computed 会让 ProjectForm 重渲染，同样会回退 el.value。
       if (!String(v).trim()) {
         setHint(path, '')
         if (!isTyping) setError(path, '')
       } else if (!a) {
-        setHint(path, '金额无法识别，请用 元 / 万元 / 亿元')
-        if (!isTyping) setError(path, '金额无法识别，请用 元 / 万元 / 亿元')
+        setHint(path, { text: '金额格式无法识别', level: 'error' })
+        if (!isTyping) setError(path, '金额格式无法识别')
       } else {
         // 换算结果只写在输入框下方，绝不改写输入框本身的值
         setHint(path, '≈ ' + a.wan + ' 万元 · 换算为 ' + a.yuan + ' 元')

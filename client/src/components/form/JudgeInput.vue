@@ -10,8 +10,9 @@
       v-model="text"
       pick-mode="event"
       enter
-      placeholder="如：张三（包1组长、包2）、赵四（采购人代表）"
+      placeholder="如：张三（包1组长）、赵四（采购人代表）｜输完按 Enter 或点别处识别"
       @enter="flushNow"
+      @blur="onBlurInput"
       @composing="onComposing"
       @pick="onPick"
     />
@@ -27,7 +28,7 @@
 </template>
 
 <script setup>
-import { ref, inject, watch, onUnmounted } from 'vue'
+import { ref, inject } from 'vue'
 import { parseJudges } from './validation.js'
 import ArchiveInput from './ArchiveInput.vue'
 
@@ -35,7 +36,6 @@ const form = inject('projectForm')
 const text = ref('')
 const unknown = ref([])
 let composing = false
-let timer = null
 
 function marks(j) {
   const a = []
@@ -44,31 +44,24 @@ function marks(j) {
   return a.join(' ')
 }
 
+// 只在失焦 / Enter 时识别：打字过程中绝不自动清空输入框，避免后面还有内容没输完。
 function flush() {
-  const r = parseJudges(text.value)
+  const raw = String(text.value || '').trim()
+  if (!raw) return
+  const r = parseJudges(raw)
   unknown.value = r.unknown
   r.list.forEach(function (j) {
     const ex = form.completed.judges.find(function (x) { return x.name === j.name; })
     if (ex) { ex.leader = ex.leader || j.leader; ex.owner = ex.owner || j.owner }
     else form.completed.judges.push({ name: j.name, leader: j.leader, owner: j.owner })
   })
-  text.value = ''
+  // 无法识别的原文留在输入框里，便于直接改正后再次失焦 / Enter
+  text.value = r.unknown.length ? r.unknown.join('、') : ''
 }
 
-function schedule() {
-  if (composing) return
-  if (timer) clearTimeout(timer)
-  timer = setTimeout(flush, 150)
-}
-function flushNow() {
-  if (composing) return
-  if (timer) clearTimeout(timer)
-  flush()
-}
-function onComposing(v) {
-  composing = !!v
-  if (!composing) schedule()      // 组合结束后解析最终文本
-}
+function flushNow() { if (!composing) flush() }
+function onBlurInput() { flushNow() }
+function onComposing(v) { composing = !!v }
 function onPick(p) {
   const s = String(text.value || '')
   const key = String(p.key || '')
@@ -76,10 +69,6 @@ function onPick(p) {
   if (!name) return
   if (key && s.endsWith(key)) text.value = s.slice(0, s.length - key.length) + name
   else text.value = s ? s + '、' + name : name
-  schedule()
 }
 function remove(i) { form.completed.judges.splice(i, 1) }
-
-watch(text, schedule)
-onUnmounted(function () { if (timer) clearTimeout(timer) })
 </script>
