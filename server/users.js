@@ -64,7 +64,8 @@ function authenticate(db, username, password) {
 }
 
 function listUsers(db) {
-  return db.prepare('SELECT id, username, role, created_at, updated_at, last_login_at FROM users ORDER BY id ASC').all();
+  // 全局默认排序：最近更新的用户在前；同秒更新用 id 兜底
+  return db.prepare('SELECT id, username, role, created_at, updated_at, last_login_at FROM users ORDER BY updated_at DESC, id DESC').all();
 }
 
 function validateUsername(username) {

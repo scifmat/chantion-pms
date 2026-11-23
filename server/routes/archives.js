@@ -159,7 +159,7 @@ router.get('/search', (req, res) => {
     : 'id, name, name_norm, phone, email, address';
   const sql = exact
     ? 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE name_norm = ? LIMIT 1'
-    : 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE name LIKE ? ORDER BY name ASC LIMIT 10';
+    : 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE name LIKE ? ORDER BY updated_at DESC, id DESC LIMIT 10';
   const rows = exact ? db.prepare(sql).all(normName(q)) : db.prepare(sql).all(like(q));
   res.json({ ok: true, data: rows.map(withValueLists) });
 });
@@ -173,7 +173,8 @@ router.get('/', (req, res) => {
     ? 'id, name, name_norm, leader, owner, source_project_no, created_at, updated_at'
     : 'id, name, name_norm, attribute' + (c.table === 'competitors' ? ', is_self' : '') +
       ', phone, email, address, source_project_no, created_at, updated_at';
-  const sql = 'SELECT ' + cols + ' FROM ' + c.table + (q ? ' WHERE name LIKE ?' : '') + ' ORDER BY name ASC';
+  // 全局默认排序：最近更新的档案在前；同秒更新用 id 兜底
+  const sql = 'SELECT ' + cols + ' FROM ' + c.table + (q ? ' WHERE name LIKE ?' : '') + ' ORDER BY updated_at DESC, id DESC';
   const rows = q ? db.prepare(sql).all(like(q)) : db.prepare(sql).all();
   res.json({ ok: true, data: rows.map(function (r) { return toListRow(c, r); }) });
 });

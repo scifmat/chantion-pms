@@ -127,9 +127,10 @@ function constraintError(err) {
 // 条件构造器已抽到 ../queryBuilder.buildHomeWhere，与首页导出共用同一份 5 条件口径，零漂移。
 router.get('/', (req, res) => {
   const { where, args } = buildHomeWhere(req.query || {});
+  // 全局默认排序：最近更新在前；同一秒内多次保存用 version 决定先后（version 每次编辑 +1）
   const sql = 'SELECT ' + LIST_COLUMNS + ' FROM projects' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') +
-    ' ORDER BY project_no ASC';
+    ' ORDER BY updated_at DESC, version DESC, row_id DESC';
   res.json({ ok: true, data: db.prepare(sql).all(...args) });
 });
 
@@ -150,9 +151,10 @@ router.get('/check-no', (req, res) => {
 // 条件构造器已抽到 ../queryBuilder，与 Excel 导出共用同一份 14 条件口径，零漂移。
 router.get('/advanced', (req, res) => {
   const { where, args } = buildAdvancedWhere(req.query || {});
+  // 与首页列表同口径：updated_at 倒序，最近更新的项目排在最前
   const sql = 'SELECT ' + ADV_COLUMNS + ' FROM projects' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') +
-    ' ORDER BY project_no ASC';
+    ' ORDER BY updated_at DESC, version DESC, row_id DESC';
   res.json({ ok: true, data: db.prepare(sql).all(...args) });
 });
 

@@ -66,8 +66,9 @@ router.post('/excel', requireLogin, async (req, res, next) => {
     // 有 detail 字段时带上 detail JSON（复杂字段扁平化需要），多取 1 行判断是否截断
     const needDetail = fields.some(function (f) { return f.source === 'detail'; });
     const columns = selectColumns(needDetail);
+    // 导出也属于列表：与页面同口径按最近更新在前，截断时保留的也是最新更新的记录
     const sql = 'SELECT ' + columns + ' FROM projects' + whereSql +
-      ' ORDER BY project_no ASC LIMIT ' + (MAX_ROWS + 1);
+      ' ORDER BY updated_at DESC, version DESC, row_id DESC LIMIT ' + (MAX_ROWS + 1);
     const rows = db.prepare(sql).all(...args);
 
     const truncated = rows.length > MAX_ROWS;

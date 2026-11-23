@@ -1,7 +1,8 @@
 <template>
   <!-- 可视化日期/时间选择器：保留 .fld 外层包裹，内部换成 el-date-picker -->
-  <div class="date-field" @paste.capture="onPaste" @blur.capture="onBlur">
+  <div class="date-field" @paste.capture="onPaste" @blur.capture="onBlur" @keydown.capture="onKeydown">
     <el-date-picker
+      :key="pickerKey"
       v-model="inner"
       :type="kind"
       :value-format="valueFormat"
@@ -18,7 +19,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { normalizeDateText } from './validation.js'
 
 const props = defineProps({
@@ -27,6 +28,8 @@ const props = defineProps({
   placeholder: { type: String, default: '' }
 })
 const emit = defineEmits(['update:modelValue'])
+// 提交非标准输入后重建 picker：清掉 Element Plus 内部未解析的原始文本，避免界面回退
+const pickerKey = ref(0)
 
 // 面板 teleported 到 body：不受弹窗 overflow:auto 裁剪；flip/shift 自动向上翻转与左右避让，
 // 保证输入框靠屏幕底部 / 右侧时面板也不会溢出或被遮挡。
@@ -49,9 +52,30 @@ const inner = computed({
 })
 
 /**
- * 粘贴兼容：从外部复制 2026年11月13日 / 2026/11/13 9:30 / 2026.11.13 等，
- * 统一识别后直接写入标准格式；只更新 model，绝不改写 DOM 值或光标。
+ * 把输入框里的文本归一化并写回 model。
+ * Element Plus 只按 format 精确解析，手输「2026年11月21日」「9:30」这类内容它不会提交；
+ * 这里在 Enter / 失焦时接管，并在必要时重建 picker 以清掉它内部的原始文本。
  */
+function commitInput(el) {
+  if (!el || el.tagName !== 'INPUT') return false
+  const n = normalizeDateText(el.value, isDatetime.value)
+  if (!n) return false
+  const model = String(props.modelValue == null ? '' : props.modelValue)
+  if (n !== el.value) {
+    el.value = n
+    emit('update:modelValue', n)
+    pickerKey.value += 1
+    return true
+  }
+  if (n !== model) {
+    emit('update:modelValue', n)
+    return true
+  }
+  // 已是标准格式且与 model 一致：交回 Element Plus 处理（例如 Enter 关闭日历面板）
+  return false
+}
+
+/** 主输入框直接粘贴：2026年11月13日 / 2026/11/13 9:30 / 2026.11.13 等都能识别 */
 function onPaste(e) {
   const raw = e.clipboardData && e.clipboardData.getData('text')
   const n = normalizeDateText(raw, isDatetime.value)
@@ -59,14 +83,19 @@ function onPaste(e) {
     e.preventDefault()
     e.stopPropagation()
     emit('update:modelValue', n)
+    pickerKey.value += 1
   }
 }
 
-/** 手输非标准格式的兜底：失焦后把识别结果写回 model（此时用户已不再输入） */
-function onBlur(e) {
-  const el = e.target
-  if (!el || el.tagName !== 'INPUT') return
-  const n = normalizeDateText(el.value, isDatetime.value)
-  if (n && n !== String(props.modelValue == null ? '' : props.modelValue)) emit('update:modelValue', n)
+/** Enter 提交：捕获阶段先归一化，拦住 Element Plus 对非标准文本的解析告警 */
+function onKeydown(e) {
+  if (e.key !== 'Enter') return
+  if (commitInput(e.target)) {
+    e.preventDefault()
+    e.stopPropagation()
+  }
 }
+
+/** 失焦兜底：手输非标准格式也能写回标准值 */
+function onBlur(e) { commitInput(e.target) }
 </script>

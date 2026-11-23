@@ -56,6 +56,7 @@ function seedDefaults(db) {
 }
 
 function groupRows(db, key, includeDisabled) {
+  // 例外：业务配置的 sort_no 是人工指定的展示顺序，不套用「updated_at DESC」默认规范
   const sql = 'SELECT id, option_value, sort_no, enabled, extra FROM config_options WHERE group_key = ?' +
     (includeDisabled ? '' : ' AND enabled = 1') + ' ORDER BY sort_no ASC, id ASC';
   return db.prepare(sql).all(key);

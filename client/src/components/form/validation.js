@@ -11,6 +11,8 @@ export const CORRECTION_ITEMS = ['采购公告', '采购文件', '采购结果',
 const SHORT_HOSTS = /^(bit\.ly|t\.cn|dwz\.cn|sina\.lt|is\.gd|tinyurl\.com|goo\.gl|tiny\.cc|url\.cn|suo\.im|m\.rw\.com)/i
 // 日期：分隔符 - / . 均兼容；日期与时间之间允许任意空格 / T；时间支持 H:M[:S]
 const DATE_RE = /^(\d{4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})(?:[\sT]+(\d{1,2})\s*:\s*(\d{1,2})(?:\s*:\s*(\d{1,2}))?)?\s*$/
+// 非锚定版本：允许「投标开始时间：2026-11-21 09:30」「2026-11-21 至 2026-11-22」这类带前后缀的粘贴
+const DATE_SCAN_RE = /(\d{4})\s*[-/.]\s*(\d{1,2})\s*[-/.]\s*(\d{1,2})(?:[\sT]+(\d{1,2})\s*:\s*(\d{1,2})(?:\s*:\s*(\d{1,2}))?)?/
 // 金额单位 -> 换算到「元」的倍率。内置元/万元/亿元，业务配置页可停用或扩展（第 7 步）。
 let AMOUNT_UNITS = { '元': 1, '万元': 10000, '亿元': 100000000 }
 export function setAmountUnits(map) {
@@ -48,25 +50,34 @@ export function stripSpaces(value, rule, trimEnds = false) {
  * 日期/时间粘贴兼容（第 7 轮紧急修复）：
  *  - 中文年月日 2026年11月13日 / 2026 年 11 月 13 日
  *  - 分隔符 - / .，如 2026/11/13、2026.11.13
- *  - 任意数量空格（含全角 \u3000）、T 分隔，中文时分秒 9时3分
+ *  - 任意数量空格（含全角 \u3000）、T 分隔，中文时分秒 9时3分 / 9点30分（日期与时间也可无空格）
  *  - 不标准时分秒 9:3 -> 09:03:00；纯日期字段只保留 YYYY-MM-DD
  * 统一输出 YYYY-MM-DD 或 YYYY-MM-DD HH:mm:ss；无法识别返回 null。
  */
 export function normalizeDateText(value, withTime) {
-  let s = String(value == null ? '' : value)
-    .replace(/\u3000/g, ' ')                       // 全角空格统一成半角
-    .trim()
+  // 全角数字 / 斜杠 / 冒号 / 点统一成半角（toHalfWidth 在本文件后面声明，函数提升可直接调用）
+  let s = toHalfWidth(String(value == null ? '' : value)).trim()
   if (!s) return ''
   s = s.replace(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日?/g, '$1-$2-$3')
-  s = s.replace(/(\d{1,2})\s*时/g, '$1:')
+  s = s.replace(/上午\s*/g, '')
+  s = s.replace(/下午\s*(\d{1,2})/g, function (_, h) {
+    const n = Number(h)
+    return String(n === 12 ? 12 : n + 12)
+  })
+  s = s.replace(/(\d{1,2})\s*[点时]/g, '$1:')      // 9时 / 09点 都视作小时
        .replace(/(\d{1,2})\s*分/g, '$1:')
        .replace(/(\d{1,2})\s*秒/g, '$1')
-       .replace(/：/g, ':')
        .replace(/:\s*$/, '')                        // 9时3分 -> 9:3: -> 9:3
-  const m = DATE_RE.exec(s)
+  // 「2026年12月11日09点30分」日字被吃掉后日期与时间会粘在一起，补回一个空格
+  s = s.replace(/(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\d{1,2}:)/, '$1 $2')
+  // 毫秒 / UTC / 时区后缀
+  s = s.replace(/(\d{1,2}:\d{1,2}(?::\d{1,2})?)\.\d{1,3}/, '$1')
+       .replace(/\s*(Z|UTC|[+-]\d{2}:?\d{2})$/i, '')
+  const m = DATE_RE.exec(s) || DATE_SCAN_RE.exec(s)
   if (!m) return null
   const mo = Number(m[2]), day = Number(m[3])
-  if (mo < 1 || mo > 12 || day < 1 || day > 31) return null
+  const maxDay = new Date(Date.UTC(Number(m[1]), mo, 0)).getUTCDate()
+  if (mo < 1 || mo > 12 || day < 1 || day > maxDay) return null
   const date = m[1] + '-' + p2(mo) + '-' + p2(day)
   if (!withTime) return date
   const hh = Number(m[4] || 0), mm = Number(m[5] || 0), ss = Number(m[6] || 0)

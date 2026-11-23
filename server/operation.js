@@ -77,6 +77,7 @@ function listLogs(db, q, opts) {
   if (text(q.keyword)) { where.push('(summary LIKE ? OR project_name LIKE ?)'); args.push('%' + text(q.keyword) + '%', '%' + text(q.keyword) + '%'); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(text(q.from))) { where.push('created_at >= ?'); args.push(text(q.from)); }
   if (/^\d{4}-\d{2}-\d{2}$/.test(text(q.to))) { where.push('created_at <= ?'); args.push(text(q.to) + ' 23:59:59'); }
+  // 操作日志表只有 created_at（记录不可编辑），它等同于该表的「更新时间」，同秒用 id 兜底
   return db.prepare(
     'SELECT id, project_no, project_name, op_type, summary, operator, created_at FROM operation_logs WHERE ' +
     where.join(' AND ') + ' ORDER BY created_at DESC, id DESC'
