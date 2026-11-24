@@ -49,8 +49,10 @@ async function main() {
   const nowText = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai', hour12: false })
   const sourceCheck = new Database(REAL_DB, { readonly: true })
   const futureCount = sourceCheck.prepare('SELECT COUNT(*) n FROM projects WHERE updated_at > ?').get(nowText).n
+  const futureLogs = sourceCheck.prepare('SELECT COUNT(*) n FROM operation_logs WHERE created_at > ?').get(nowText).n
   sourceCheck.close()
   check('真实库无未来更新时间', futureCount === 0, '未来记录数=' + futureCount)
+  check('操作记录无未来时间', futureLogs === 0, '未来记录数=' + futureLogs)
 
   ;[TEST_DB, TEST_DB + '-wal', TEST_DB + '-shm'].forEach(f => { try { fs.unlinkSync(f) } catch (e) {} })
   const src = new Database(REAL_DB, { readonly: true })

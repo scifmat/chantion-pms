@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>操作记录</h2>
-        <div class="muted">共 {{ rows.length }} 条 · 事件级留痕（何时 / 谁 / 做了什么）· {{ isAdmin ? '含项目操作与系统设置' : '项目操作记录' }} · 本页只读</div>
+        <div class="muted">共 {{ rows.length }} 条 · 事件级留痕（何时 / 谁 / 做了什么）· 按操作时间倒序 · {{ isAdmin ? '含项目操作与系统设置' : '项目操作记录' }} · 本页只读</div>
       </div>
     </div>
 
