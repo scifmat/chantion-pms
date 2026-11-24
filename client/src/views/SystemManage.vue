@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>系统管理</h2>
-        <div class="muted">系统级设置、业务选项与用户权限集中管理 · 仅管理员可见</div>
+        <div class="muted">仅管理员可见</div>
       </div>
     </div>
 

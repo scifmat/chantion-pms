@@ -479,7 +479,8 @@ button.archive-name-link:hover{text-decoration:underline;color:#2559c9}
 .section-title{font-size:14px;font-weight:600;color:#243247;margin:18px 0 12px;padding-left:10px;border-left:3px solid #2f6fed}
 .echarts-grid{grid-template-columns:repeat(2,minmax(300px,1fr))}
 .chart-card-wide{grid-column:1 / -1}
-.chart-title-hint{font-size:11px;font-weight:400;color:#8a94a6;margin-left:6px}
+.hint-text{font-size:11px;font-weight:400;color:#8a94a6;margin-left:6px}
+.stat-label .hint-text{font-size:10px;margin-left:2px}
 /* 榜单卡片与排名行 */
 .rank-grid{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px}
 .rank-card{padding:16px 18px;margin-bottom:0}
@@ -517,7 +518,6 @@ button.archive-name-link:hover{text-decoration:underline;color:#2559c9}
 @media(max-width:640px){.dash-head{flex-direction:column}.year-filter{padding-top:0}}
 /* 第 15 步：地区热力地图整行面板 */
 .map-panel{margin-bottom:14px;padding:14px 18px}
-.map-hint{float:right;font-size:11px;font-weight:400;color:#8a94a6;line-height:20px}
 /* 全局统一二次确认弹窗：标题由 ElMessageBox 显示，正文固定「对象 / 后果」两行 */
 .chantion-confirm .el-message-box__message p{margin:0}
 .chantion-confirm-body{padding:2px 0 4px}

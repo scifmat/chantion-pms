@@ -3,9 +3,7 @@
     <div class="page-head">
       <div>
         <h2>回收站</h2>
-        <div class="muted">
-          共 {{ rows.length }} 条 · 已删除的项目与档案 · 恢复后放回原列表 · 彻底删除不可恢复
-        </div>
+        <div class="muted">共 {{ rows.length }} 条</div>
       </div>
     </div>
 
@@ -74,10 +72,6 @@
           <tr v-if="loading"><td colspan="5" class="empty">正在读取…</td></tr>
         </tbody>
       </table>
-    </div>
-
-    <div class="panel muted" style="margin-top:10px">
-      提示：恢复项目会重建统计映射；彻底删除会物理销毁数据并写入操作记录，且不可恢复。
     </div>
   </div>
 </template>

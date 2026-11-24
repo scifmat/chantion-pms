@@ -10,8 +10,7 @@
           <span v-else class="dash-type-tag">{{ typeLabel }}</span>
         </div>
         <div class="dash-sub" v-if="profile">
-          {{ isSelfProfile ? '本企业' : typeLabel }} · 参与项目数据汇总分析
-          <span v-if="profile.attribute"> · {{ profile.attribute }}</span>
+          {{ isSelfProfile ? '本企业' : typeLabel }}<span v-if="profile.attribute"> · {{ profile.attribute }}</span>
         </div>
       </div>
       <!-- 全局年份筛选：选项从后端实际数据动态生成，覆盖图表区与榜单区 -->
@@ -39,7 +38,7 @@
           :key="s.key"
           :class="'stat-tone-' + (i % 4)"
         >
-          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-label">{{ statParts(s).label }}<span v-if="statParts(s).hint" class="hint-text">（{{ statParts(s).hint }}）</span></div>
           <div class="stat-value-row">
             <span class="stat-value">{{ s.value }}</span>
             <span class="stat-unit" v-if="s.unit">{{ s.unit }}</span>
@@ -70,7 +69,7 @@
         <div class="rank-grid rank-grid-3">
           <RankList title="常胜供应商 TOP 5" :items="rankSupplier" empty-text="暂无中标数据" />
           <RankList title="核心代理机构 TOP 5" :items="rankAgency" empty-text="暂无代理数据" tone="rank-tone-1" />
-          <RankList title="惯用业主评委 TOP 5" :items="rankOwner" empty-text="暂无业主评委数据（detail.completed.judges 中 owner=true 的评委）" tone="rank-tone-2" />
+          <RankList title="惯用业主评委 TOP 5" :items="rankOwner" empty-text="暂无业主评委数据" tone="rank-tone-2" />
         </div>
       </template>
 
@@ -124,12 +123,12 @@
         <!-- 地区热力图 + 中标数 TOP5 榜单：下钻省份时榜单同步切到该省地市 -->
         <div class="geo-grid" v-if="echarts">
           <div class="panel map-panel">
-            <div class="chart-title">{{ regionMapTitle }} <span class="map-hint">点击省份下钻市级 · 滚轮缩放 · 左键拖动</span></div>
+            <div class="chart-title">{{ regionMapTitle }} <span class="hint-text">点击省份下钻市级 · 滚轮缩放 · 左键拖动</span></div>
             <ChinaMap :key="regionMapVersion" :geo-data="regionGeoData" :city-data="regionCityData"
                       @drill="onRegionDrill" @back="onRegionBack" />
           </div>
           <div class="panel chart-card geo-rank-card">
-            <div class="chart-title">{{ regionRankTitle }} <span class="map-hint">单位：个</span></div>
+            <div class="chart-title">{{ regionRankTitle }} <span class="hint-text">单位：个</span></div>
             <ChartBar :items="regionRankItems" mode="horizontal" color="#0f9d6e" value-suffix=" 个" />
           </div>
         </div>
@@ -186,6 +185,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { getArchiveStats } from '../api.js'
+import { splitLabelHint } from '../utils/labels.js'
 import EChart from '../components/EChart.vue'
 import ChartBar from '../components/ChartBar.vue'
 import ChartPie from '../components/ChartPie.vue'
@@ -200,6 +200,7 @@ const props = defineProps({
   active: { type: Boolean, default: false }
 })
 const emit = defineEmits(['back'])
+function statParts(s) { return splitLabelHint(s && s.label) }
 
 const profile = ref(null)
 const summary = ref([])

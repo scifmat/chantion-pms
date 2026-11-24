@@ -3,7 +3,7 @@
   <div class="config-panel">
     <div class="config-toolbar">
       <button class="btn primary" :disabled="saving" @click="save">保存当前分组</button>
-      <span class="muted">集中维护下拉选项 · 调整只影响后续新增/编辑与查询，历史原值保留且仍可检索</span>
+      <span class="muted">调整只影响后续录入，历史原值保留</span>
     </div>
 
     <div class="panel">

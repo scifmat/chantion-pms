@@ -3,7 +3,7 @@
     <div class="page-head">
       <div>
         <h2>数据看板</h2>
-        <div class="muted">战略驾驶舱 · 投标方视角 · 数据每 5 分钟更新<span v-if="data" class="global-updated"> · 数据更新时间：{{ data.updatedAt }}</span></div>
+        <div class="muted">数据每 5 分钟更新<span v-if="data" class="global-updated"> · 更新时间：{{ data.updatedAt }}</span></div>
       </div>
       <div class="global-head-actions">
         <button class="btn sm global-refresh" :disabled="loading" @click="load(true)">{{ loading ? '刷新中…' : '刷新' }}</button>
@@ -24,7 +24,7 @@
       <!-- 宏观大盘 -->
       <div class="stat-grid">
         <div class="stat-card" v-for="(s, i) in data.summary" :key="s.key" :class="'stat-tone-' + (i % 4)">
-          <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-label">{{ statParts(s).label }}<span v-if="statParts(s).hint" class="hint-text">（{{ statParts(s).hint }}）</span></div>
           <div class="stat-value-row"><span class="stat-value">{{ s.value }}</span><span class="stat-unit" v-if="s.unit">{{ s.unit }}</span></div>
           <div class="stat-accent"></div>
         </div>
@@ -34,7 +34,7 @@
       <div class="section-title">趋势与结构</div>
       <div class="overview-grid">
         <div class="panel chart-card">
-          <div class="chart-title">月度发标趋势（近 12 个月）</div>
+          <div class="chart-title">月度发标趋势<span class="hint-text">（近 12 个月）</span></div>
           <TrendChart :items="data.trend" height="300px" />
         </div>
         <div class="panel chart-card">
@@ -83,12 +83,12 @@
       <div class="section-title">全局热力地图</div>
       <div class="geo-grid">
         <div class="panel map-panel">
-          <div class="chart-title">{{ mapTitle }} <span class="map-hint">单位：万元 · 颜色越深预算越高</span></div>
+          <div class="chart-title">{{ mapTitle }} <span class="hint-text">单位：万元 · 颜色越深预算越高</span></div>
           <ChinaMap :key="mapVersion" :geo-data="data.geo" :city-data="data.cityGeo || {}" :drillable="true"
                     value-unit="万元" @drill="onMapDrill" @back="onMapBack" />
         </div>
         <div class="panel chart-card geo-rank-card">
-          <div class="chart-title">{{ geoRankTitle }} <span class="map-hint">单位：万元</span></div>
+          <div class="chart-title">{{ geoRankTitle }} <span class="hint-text">单位：万元</span></div>
           <ChartBar :items="topGeoItems" mode="horizontal" height="430px" value-suffix=" 万元" />
         </div>
       </div>
@@ -99,6 +99,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { getGlobalStats } from '../api.js'
+import { splitLabelHint } from '../utils/labels.js'
 import TrendChart from '../components/TrendChart.vue'
 import ChartPie from '../components/ChartPie.vue'
 import ChartBar from '../components/ChartBar.vue'
@@ -107,6 +108,7 @@ import SelfBadge from '../components/SelfBadge.vue'
 import ChinaMap from '../components/ChinaMap.vue'
 
 const props = defineProps({ active: { type: Boolean, default: false } })
+function statParts(s) { return splitLabelHint(s && s.label) }
 const data = ref(null)
 const selectedYear = ref('')
 const loading = ref(false)

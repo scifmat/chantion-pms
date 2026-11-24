@@ -45,7 +45,7 @@ function computeGlobal(db, year) {
     "SELECT COALESCE(SUM(award_amount_fen),0) award, AVG(CASE WHEN budget_fen>0 THEN (budget_fen-award_amount_fen)*1.0/budget_fen END) rate FROM projects WHERE deleted=0 AND status='完成招标'" + yw
   ).get();
   const summary = [
-    { key: 'projectCount', label: '累计有效项目数', value: Number(base.n || 0), unit: '个' },
+    { key: 'projectCount', label: '已结束项目数（完成+终止）', value: Number(base.n || 0), unit: '个' },
     { key: 'totalBudget', label: '总预算规模', value: wan(base.budget), unit: '万元' },
     { key: 'totalAward', label: '总中标金额', value: wan(award.award), unit: '万元' },
     { key: 'avgSaving', label: '平均资金节约率', value: (Math.round(Number(award.rate || 0) * 1000) / 10).toFixed(1), unit: '%' }
