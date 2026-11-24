@@ -84,10 +84,10 @@
 
 <script setup>
 import { ref, reactive, watch } from 'vue'
-import { ElMessageBox } from 'element-plus'
 import { getRecycleItems, restoreRecycleItem, purgeRecycleItem } from '../api.js'
 import { isAdmin } from '../store/auth.js'
 import { toastSuccess, toastError, toastWarning } from '../utils/toast.js'
+import { confirmAction, confirmInput } from '../utils/confirm.js'
 import DateField from '../components/form/DateField.vue'
 
 const props = defineProps({ active: { type: Boolean, default: false } })
@@ -121,12 +121,19 @@ function reset() { Object.assign(filters, emptyFilters()); load() }
 function switchTab(next) { tab.value = next; load() }
 
 async function restore(r) {
+  const isProject = tab.value === 'project'
   try {
-    await ElMessageBox.confirm(
-      '确定恢复「' + r.name + '」吗？恢复后会放回原列表。',
-      '恢复确认',
-      { confirmButtonText: '确定恢复', cancelButtonText: '取消', type: 'info' }
-    )
+    await confirmAction({
+      title: isProject ? '恢复项目' : '恢复档案',
+      object: isProject
+        ? '确定要恢复：「' + r.name + '」（' + r.no + '）吗？'
+        : '确定要恢复：「' + r.name + '」吗？',
+      consequence: isProject
+        ? '恢复后将放回项目列表，并重建统计映射。'
+        : '恢复后将放回原档案列表。',
+      confirmText: '确定恢复',
+      danger: false
+    })
   } catch (e) { return }
   try {
     await restoreRecycleItem(tab.value, r.id)
@@ -136,22 +143,19 @@ async function restore(r) {
 }
 
 async function purge(r) {
-  const expected = tab.value === 'project' ? r.no : r.name
+  const isProject = tab.value === 'project'
+  const expected = isProject ? r.no : r.name
   try {
-    await ElMessageBox.prompt(
-      '彻底删除不可恢复！请输入“' + expected + '”确认：',
-      '彻底删除确认',
-      {
-        confirmButtonText: '彻底删除',
-        cancelButtonText: '取消',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger',
-        inputPlaceholder: '请输入原' + (tab.value === 'project' ? '项目编号' : '名称'),
-        inputValidator: function (value) {
-          return String(value == null ? '' : value).trim() === expected || '输入不一致，请重新输入'
-        }
-      }
-    )
+    await confirmInput({
+      title: isProject ? '彻底删除项目' : '彻底删除档案',
+      object: isProject
+        ? '确定要彻底删除：「' + r.name + '」（' + r.no + '）吗？'
+        : '确定要彻底删除：「' + r.name + '」吗？',
+      consequence: '彻底删除将物理销毁数据，且不可恢复，操作会记入操作记录。',
+      confirmText: '彻底删除',
+      expected: expected,
+      inputPlaceholder: '请输入原' + (isProject ? '项目编号' : '名称') + '：' + expected
+    })
   } catch (e) { return }
   try {
     await purgeRecycleItem(tab.value, r.id)

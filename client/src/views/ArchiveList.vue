@@ -127,13 +127,15 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElDialog, ElMessageBox, ElSelect, ElOption } from 'element-plus'
+import { ElDialog, ElSelect, ElOption } from 'element-plus'
 import { getArchives, updateArchive, deleteArchive } from '../api.js'
 import { archiveLabel, UNIT_ATTRIBUTES, REF_COL_LABEL } from '../utils/archive.js'
 import MultiValueCell from '../components/MultiValueCell.vue'
 import SelfBadge from '../components/SelfBadge.vue'
 import { toastSuccess, toastError, toastWarning } from '../utils/toast.js'
+import { confirmAction } from '../utils/confirm.js'
 import { canWrite } from '../store/auth.js'
+import { dataVersion } from '../store/dataVersion.js'
 
 const unitAttributes = UNIT_ATTRIBUTES
 
@@ -181,15 +183,15 @@ const dialogOpen = ref(false)
 const saving = ref(false)
 const form = ref({ id: null, name: '', attribute: '', phone: '', email: '', address: '', refCount: 0 })
 
-async function load() {
-  loading.value = true
+async function load(silent) {
+  if (!silent) loading.value = true
   loadError.value = ''
   try {
     rows.value = await getArchives(props.type, q.value)
   } catch (e) {
-    loadError.value = e.message
+    if (!silent) loadError.value = e.message
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 function reset() { q.value = ''; load() }
@@ -243,11 +245,13 @@ async function remove(r) {
     return
   }
   try {
-    await ElMessageBox.confirm(
-      '确定删除档案「' + r.name + '」吗？删除后会移入「回收站」，可在回收站恢复。',
-      '删除确认',
-      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
-    )
+    await confirmAction({
+      title: '删除档案',
+      object: '确定要移入回收站：「' + r.name + '」吗？',
+      consequence: '删除后将不再出现在档案列表中，您可以在回收站恢复。',
+      confirmText: '移入回收站',
+      danger: true
+    })
   } catch (e) { return } // 用户取消
   try {
     await deleteArchive(props.type, r.id)
@@ -266,6 +270,13 @@ watch(function () { return props.active; }, function (on) {
     load()
   }
 }, { immediate: true })
+
+// 项目 / 档案 / 回收站写操作成功后静默刷新引用数：
+// 标记未加载，切回本页时也会拿最新数据；当前正在显示则立即刷新且不闪 loading 行。
+watch(dataVersion, function () {
+  loaded.value = false
+  if (props.active) load(true)
+})
 </script>
 
 <style scoped>

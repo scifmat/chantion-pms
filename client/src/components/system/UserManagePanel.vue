@@ -87,9 +87,10 @@
 
 <script setup>
 import { ref, watch } from 'vue'
-import { ElDialog, ElSelect, ElOption, ElMessageBox } from 'element-plus'
+import { ElDialog, ElSelect, ElOption } from 'element-plus'
 import { getUsers, createUser, resetUserPassword, deleteUser } from '../../api.js'
 import { toastSuccess, toastError } from '../../utils/toast.js'
+import { confirmAction } from '../../utils/confirm.js'
 
 const props = defineProps({ active: { type: Boolean, default: false } })
 const users = ref([])
@@ -175,11 +176,13 @@ async function submitReset() {
 
 async function remove(u) {
   try {
-    await ElMessageBox.confirm(
-      '确定删除用户「' + u.username + '」吗？删除后该用户无法登录，操作不可恢复。',
-      '删除确认',
-      { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
-    )
+    await confirmAction({
+      title: '删除用户',
+      object: '确定要删除用户：「' + u.username + '」吗？',
+      consequence: '删除后该用户无法登录，操作不可恢复。',
+      confirmText: '确定删除',
+      danger: true
+    })
   } catch (e) { return } // 用户取消
   try {
     await deleteUser(u.id)

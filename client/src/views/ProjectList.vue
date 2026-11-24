@@ -104,20 +104,6 @@
       @saved="onSaved"
     />
 
-    <!-- 删除二次确认：软删除，操作记录可在「操作记录」页查看 -->
-    <div class="confirm" v-if="deleting">
-      <div class="box">
-        <div style="font-size:15px;margin-bottom:14px">
-          确定删除项目「{{ deleting.project_name }}」（{{ deleting.project_no }}）吗？
-          删除后该项目不再出现在列表与查询中，已移入「回收站」，可在回收站恢复。
-        </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px">
-          <button class="btn" @click="deleting = null">取消</button>
-          <button class="btn primary" :disabled="deletingBusy" @click="doDelete">确定删除</button>
-        </div>
-      </div>
-    </div>
-
   </div>
 </template>
 
@@ -127,6 +113,7 @@ import { getProjects, getProject, deleteProject } from '../api.js'
 import { fenToWan } from '../utils/money.js'
 import { opts } from '../utils/options.js'
 import { toastSuccess, toastError } from '../utils/toast.js'
+import { confirmAction } from '../utils/confirm.js'
 import { canWrite } from '../store/auth.js'
 import ProjectForm from '../components/ProjectForm.vue'
 import DateField from '../components/form/DateField.vue'
@@ -152,8 +139,6 @@ const dialogOpen = ref(false)
 const dialogMode = ref('add')
 const editingId = ref(null)
 const editingProject = ref(null)
-const deleting = ref(null)
-const deletingBusy = ref(false)
 
 const emptyFilters = () => ({ status: '', name: '', region: '', timeStart: '', timeEnd: '' })
 const filters = reactive(emptyFilters())
@@ -230,22 +215,23 @@ function onSaved() {
   showToast('保存成功')
 }
 
-function confirmDelete(r) { deleting.value = r }
-
-// 软删除：二次确认后才调用；服务端在同一事务内写操作记录
-async function doDelete() {
-  const r = deleting.value
-  if (!r) return
-  deletingBusy.value = true
+// 软删除：统一二次确认后才调用；服务端在同一事务内写操作记录
+async function confirmDelete(r) {
+  try {
+    await confirmAction({
+      title: '删除项目',
+      object: '确定要移入回收站：「' + r.project_name + '」（' + r.project_no + '）吗？',
+      consequence: '删除后将不再出现在列表中，您可以在回收站恢复。',
+      confirmText: '移入回收站',
+      danger: true
+    })
+  } catch (e) { return }
   try {
     await deleteProject(r.row_id, r.version)
-    deleting.value = null
     toastSuccess('项目「' + r.project_name + '」已移入回收站')
     load()   // 只刷新列表，不动 filters，查询条件原样保留
   } catch (e) {
     toastError(e.message || '删除失败，请重试')
-  } finally {
-    deletingBusy.value = false
   }
 }
 </script>

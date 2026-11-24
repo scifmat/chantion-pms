@@ -1,6 +1,7 @@
 // 统一走 /api 前缀：开发时由 Vite 代理转发到后端，生产时与页面同源。
 // 页面上永远不出现后端地址，避免跨域与地址写死（防坑 K-7 / 方案 5.1）。
 import { auth, clearSession, showLogin } from './store/auth.js'
+import { bumpDataVersion } from './store/dataVersion.js'
 import { toastError } from './utils/toast.js'
 
 async function request(path, options = {}) {
@@ -26,6 +27,11 @@ async function request(path, options = {}) {
     err.fields = data.fields || []
     throw err
   }
+  // 项目 / 档案 / 回收站的写操作成功后统一递增全局版本号：
+  // 常驻页面（如档案页）watch 它即可静默刷新引用数，不必重新挂载组件。
+  const method = String(fetchOptions.method || 'GET').toUpperCase();
+  const purePath = String(path || '').split('?')[0];
+  if (method !== 'GET' && /^\/(projects|archives|recycle)(\/|$)/.test(purePath)) bumpDataVersion();
   return data.data
 }
 
