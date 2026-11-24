@@ -17,6 +17,7 @@ const { requireLogin } = require('../auth');
 const { buildHomeWhere, buildAdvancedWhere } = require('../queryBuilder');
 const { dictionary, FIELD_MAP, cellValue, rowDetail, selectColumns } = require('../export/fields');
 const { buildWorkbook } = require('../export/workbook');
+const { writeLog } = require('../operation');
 
 const router = express.Router();
 
@@ -80,6 +81,16 @@ router.post('/excel', requireLogin, async (req, res, next) => {
       return fields.map(function (f) { return cellValue(f.key, row, detail); });
     });
     const headers = fields.map(function (f) { return { key: f.key, label: f.label }; });
+
+    // 数据导出属于敏感只读操作：记录导出类型 / 字段数 / 行数，不记录导出内容
+    const exportLabel = queryType === 'home' ? '首页查询' : '高级查询';
+    writeLog(db, {
+      project_no: 'system_export',
+      project_name: '数据导出：' + exportLabel,
+      op_type: '数据导出',
+      operator: req.user && req.user.username,
+      summary: exportLabel + '导出 ' + fields.length + ' 个字段、' + table.length + ' 行数据'
+    });
 
     const wb = await buildWorkbook(headers, table, { sheetName: '导出数据' });
 

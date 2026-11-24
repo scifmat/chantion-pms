@@ -4,6 +4,7 @@ const {
   TABLES, UNIT_ATTRIBUTES, normName, parseArchiveValues, displayArchiveValues,
   normFieldValue, serializeArchiveValues
 } = require('../archive');
+const { writeLog } = require('../operation');
 
 const router = express.Router();
 
@@ -218,6 +219,15 @@ router.put('/:type/:id', (req, res) => {
       ).run(values.name, values.name_norm, values.attribute, values.phone, values.email, values.address, nowText(), id);
       const synced = renamed ? syncProjectsOnRename(db, c, key, cur.name, values.name) : 0;
       const row = db.prepare('SELECT ' + cols + ' FROM ' + c.table + ' WHERE id = ?').get(id);
+      writeLog(db, {
+        project_no: 'archive_' + key,
+        project_name: c.label + '档案：' + values.name,
+        op_type: '档案维护',
+        operator: req.user && req.user.username,
+        summary: (renamed
+          ? c.label + '档案改名：' + cur.name + ' -> ' + values.name
+          : c.label + '档案信息更新：' + values.name) + (synced ? '，同步项目 ' + synced + ' 个' : '')
+      });
       return { row: toListRow(c, row), synced: synced, renamed: renamed };
     })();
     if (result.notFound) return res.status(404).json({ ok: false, message: '档案不存在' });
@@ -246,6 +256,13 @@ router.delete('/:type/:id', (req, res) => {
     const refCount = countReferences(c, cur.name);
     if (refCount > 0) return { referenced: refCount };
     db.prepare('DELETE FROM ' + c.table + ' WHERE id = ?').run(id);
+    writeLog(db, {
+      project_no: 'archive_' + key,
+      project_name: c.label + '档案：' + cur.name,
+      op_type: '档案维护',
+      operator: req.user && req.user.username,
+      summary: c.label + '档案删除：' + cur.name
+    });
     return { deleted: true };
   })();
   if (result.notFound) return res.status(404).json({ ok: false, message: '档案不存在' });

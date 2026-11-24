@@ -61,8 +61,9 @@ function backfillLogs(db) {
   return stat;
 }
 
-// 系统管理类操作的 op_type（普通用户不可见这类记录）
+// 系统管理 / 安全 / 导出类操作：普通用户不可见，仅管理员可见
 const SYSTEM_OP_TYPE = '系统设置';
+const HIDDEN_OP_TYPES = new Set([SYSTEM_OP_TYPE, '账号安全', '数据导出']);
 
 /** 只读列表：操作类型 / 项目编号 / 时间区间，全部 ? 占位符，按时间倒序。
  *  opts.includeSystem=false 时排除系统设置类记录（普通用户视角）。 */
@@ -71,7 +72,11 @@ function listLogs(db, q, opts) {
   opts = opts || {};
   const where = ['1 = 1'];
   const args = [];
-  if (opts.includeSystem === false) { where.push("op_type <> ?"); args.push(SYSTEM_OP_TYPE); }
+  if (opts.includeSystem === false) {
+    const hidden = Array.from(HIDDEN_OP_TYPES);
+    where.push('op_type NOT IN (' + hidden.map(function () { return '?'; }).join(', ') + ')');
+    args.push.apply(args, hidden);
+  }
   if (text(q.type)) { where.push('op_type LIKE ?'); args.push('%' + text(q.type) + '%'); }
   if (text(q.no)) { where.push('project_no LIKE ?'); args.push('%' + text(q.no) + '%'); }
   if (text(q.keyword)) { where.push('(summary LIKE ? OR project_name LIKE ?)'); args.push('%' + text(q.keyword) + '%', '%' + text(q.keyword) + '%'); }
@@ -89,11 +94,15 @@ function listLogs(db, q, opts) {
  * 管理员在末位追加「系统设置」；普通用户不含系统设置。顺序固定，不随数据波动。
  */
 // 「状态切换清空」不列入下拉：当前无此类记录且含义晦涩；历史/将来这类记录仍在「全部」可见。
-const PROJECT_OP_TYPES = ['新增项目', '编辑项目', '删除项目'];
+const PROJECT_OP_TYPES = ['新增项目', '编辑项目', '删除项目', '档案维护'];
+const ADMIN_OP_TYPES = ['账号安全', '数据导出', SYSTEM_OP_TYPE];
 function listOpTypes(includeSystem) {
   const list = PROJECT_OP_TYPES.slice();
-  if (includeSystem) list.push(SYSTEM_OP_TYPE);
+  if (includeSystem) ADMIN_OP_TYPES.forEach(function (t) { list.push(t); });
   return list;
 }
 
-module.exports = { OPERATOR, nowText, writeLog, backfillLogs, listLogs, listOpTypes, SYSTEM_OP_TYPE };
+module.exports = {
+  OPERATOR, nowText, writeLog, backfillLogs, listLogs, listOpTypes,
+  SYSTEM_OP_TYPE, HIDDEN_OP_TYPES
+};

@@ -2,6 +2,7 @@ const express = require('express');
 const { db } = require('../db');
 const { authenticate, changePassword, publicUser, getRawById } = require('../users');
 const { sign, requireLogin } = require('../auth');
+const { writeLog } = require('../operation');
 
 const router = express.Router();
 
@@ -27,11 +28,23 @@ router.get('/me', requireLogin, (req, res) => {
 
 // POST /api/auth/change-password —— 修改自己的密码；成功后签发新 Token（旧 Token 因 pv+1 失效）
 router.post('/change-password', requireLogin, (req, res) => {
-  const r = changePassword(
-    db, req.user.id,
-    (req.body && req.body.oldPassword) || '',
-    (req.body && req.body.newPassword) || ''
-  );
+  const r = db.transaction(function () {
+    const changed = changePassword(
+      db, req.user.id,
+      (req.body && req.body.oldPassword) || '',
+      (req.body && req.body.newPassword) || ''
+    );
+    if (!changed.error) {
+      writeLog(db, {
+        project_no: 'system_security',
+        project_name: '账号安全：' + ((req.user && req.user.username) || ''),
+        op_type: '账号安全',
+        operator: req.user && req.user.username,
+        summary: '用户修改本人密码'
+      });
+    }
+    return changed;
+  })();
   if (r.error) return res.status(400).json({ ok: false, message: r.error });
   res.json({ ok: true, data: { token: sign(getRawById(db, req.user.id)) } });
 });

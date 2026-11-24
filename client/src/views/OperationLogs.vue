@@ -81,12 +81,13 @@ import DateField from '../components/form/DateField.vue'
 const props = defineProps({ active: { type: Boolean, default: false } })
 // 操作类型下拉：从后端实际数据取（含系统设置等非项目操作），接口异常时用内置兜底
 // 「状态切换清空」当前无记录且含义晦涩，不列入固定下拉；记录仍在库里，「全部」可见
-const opTypes = ref(['新增项目', '编辑项目', '删除项目', '系统设置'])
+const opTypes = ref(['新增项目', '编辑项目', '删除项目', '档案维护'])
 const cols = ['操作时间', '操作人', '项目编号', '项目名称', '操作类型', '摘要']
 
-// 系统类操作的 project_no 用 system_* 哨兵值，展示时以「—」代替，靠操作类型与摘要区分
+// 系统/档案类操作没有项目编号，用 system_* / archive_* 哨兵值，展示时以「—」代替
 function isSystemLog(r) {
-  return String(r.project_no || '').indexOf('system_') === 0
+  const no = String(r.project_no || '')
+  return no.indexOf('system_') === 0 || no.indexOf('archive_') === 0
 }
 
 const emptyFilters = () => ({ type: '', no: '', keyword: '', from: '', to: '' })
