@@ -94,7 +94,10 @@ function listLogs(db, q, opts) {
  * 管理员在末位追加「系统设置」；普通用户不含系统设置。顺序固定，不随数据波动。
  */
 // 「状态切换清空」不列入下拉：当前无此类记录且含义晦涩；历史/将来这类记录仍在「全部」可见。
-const PROJECT_OP_TYPES = ['新增项目', '编辑项目', '删除项目', '档案维护'];
+const PROJECT_OP_TYPES = [
+  '新增项目', '编辑项目', '删除项目', '档案维护',
+  '恢复项目', '彻底删除项目', '恢复档案', '彻底删除档案'
+];
 const ADMIN_OP_TYPES = ['账号安全', '数据导出', SYSTEM_OP_TYPE];
 function listOpTypes(includeSystem) {
   const list = PROJECT_OP_TYPES.slice();

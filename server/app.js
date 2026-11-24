@@ -18,6 +18,7 @@ const usersRouter = require('./routes/users');
 const systemRouter = require('./routes/system');
 const globalRouter = require('./routes/global');
 const exportRouter = require('./routes/export');
+const recycleRouter = require('./routes/recycle');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -39,6 +40,7 @@ app.use('/api/system', systemRouter);
 app.use('/api/global', globalRouter);
 app.use('/api/operation-logs', operationLogsRouter);
 app.use('/api/export', exportRouter);
+app.use('/api/recycle', recycleRouter);
 
 // 第 1 步为开发模式（Vite + Express 两个进程，靠代理打通）。
 // 生产形态预留：一旦前端打包出 client/dist，同一个进程即可同源托管页面，天然无跨域。

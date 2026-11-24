@@ -209,6 +209,22 @@ export function deleteProject(id, version) {
   return request('/projects/' + id, { method: 'DELETE', body: JSON.stringify({ version: version }) })
 }
 
+// 011 回收站：列表 / 恢复 / 彻底删除（彻底删除仅管理员，后端二次校验）
+export function getRecycleItems(params = {}) {
+  const u = new URLSearchParams()
+  Object.keys(params).forEach(function (k) {
+    const v = params[k]
+    if (v !== '' && v !== null && v !== undefined) u.set(k, String(v))
+  })
+  return request('/recycle?' + u.toString())
+}
+export function restoreRecycleItem(type, id) {
+  return request('/recycle/' + encodeURIComponent(type) + '/' + encodeURIComponent(id) + '/restore', { method: 'POST' })
+}
+export function purgeRecycleItem(type, id) {
+  return request('/recycle/' + encodeURIComponent(type) + '/' + encodeURIComponent(id), { method: 'DELETE' })
+}
+
 // 第 8 步：只读操作记录（事件级）
 // 操作类型下拉：从后端取所有实际出现过的类型，自动跟随数据（含系统设置等非项目操作）
 export function getOperationLogTypes() {

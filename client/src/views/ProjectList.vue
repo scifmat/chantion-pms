@@ -109,7 +109,7 @@
       <div class="box">
         <div style="font-size:15px;margin-bottom:14px">
           确定删除项目「{{ deleting.project_name }}」（{{ deleting.project_no }}）吗？
-          删除后该项目不再出现在列表与查询中，数据仍保留，可在「操作记录」中查看这条删除记录。
+          删除后该项目不再出现在列表与查询中，已移入「回收站」，可在回收站恢复。
         </div>
         <div style="display:flex;justify-content:flex-end;gap:8px">
           <button class="btn" @click="deleting = null">取消</button>
@@ -240,7 +240,7 @@ async function doDelete() {
   try {
     await deleteProject(r.row_id, r.version)
     deleting.value = null
-    toastSuccess('已删除项目「' + r.project_name + '」')
+    toastSuccess('项目「' + r.project_name + '」已移入回收站')
     load()   // 只刷新列表，不动 filters，查询条件原样保留
   } catch (e) {
     toastError(e.message || '删除失败，请重试')

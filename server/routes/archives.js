@@ -1,7 +1,7 @@
 const express = require('express');
 const { db, nowText } = require('../db');
 const {
-  TABLES, UNIT_ATTRIBUTES, normName, parseArchiveValues, displayArchiveValues,
+  TABLES, UNIT_ATTRIBUTES, normName, countReferences, parseArchiveValues, displayArchiveValues,
   normFieldValue, serializeArchiveValues
 } = require('../archive');
 const { writeLog } = require('../operation');
@@ -34,17 +34,10 @@ function withValueLists(r) {
   });
 }
 
-/** 引用项目数：列表展示与删除校验共用同一口径 —— 未删除项目 + 对应派生列 LIKE 名称 */
-function countReferences(c, name) {
-  const refCol = c.projectCol || 'detail';
-  const sql = 'SELECT COUNT(*) AS n FROM projects WHERE deleted = 0 AND ' + refCol + ' LIKE ?';
-  return db.prepare(sql).get(like(name)).n;
-}
-
 /** 档案行 -> 列表/编辑回显统一结构（含引用数与多值联系方式） */
 function toListRow(c, r) {
   return Object.assign(withValueLists(r), {
-    refCount: countReferences(c, r.name),
+    refCount: countReferences(db, c, r.name),
     refApprox: !c.projectCol
   });
 }
@@ -159,8 +152,8 @@ router.get('/search', (req, res) => {
     ? 'id, name, name_norm, leader, owner'
     : 'id, name, name_norm, phone, email, address';
   const sql = exact
-    ? 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE name_norm = ? LIMIT 1'
-    : 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE name LIKE ? ORDER BY updated_at DESC, id DESC LIMIT 10';
+    ? 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE deleted = 0 AND name_norm = ? LIMIT 1'
+    : 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE deleted = 0 AND name LIKE ? ORDER BY updated_at DESC, id DESC LIMIT 10';
   const rows = exact ? db.prepare(sql).all(normName(q)) : db.prepare(sql).all(like(q));
   res.json({ ok: true, data: rows.map(withValueLists) });
 });
@@ -175,7 +168,7 @@ router.get('/', (req, res) => {
     : 'id, name, name_norm, attribute' + (c.table === 'competitors' ? ', is_self' : '') +
       ', phone, email, address, source_project_no, created_at, updated_at';
   // 全局默认排序：最近更新的档案在前；同秒更新用 id 兜底
-  const sql = 'SELECT ' + cols + ' FROM ' + c.table + (q ? ' WHERE name LIKE ?' : '') + ' ORDER BY updated_at DESC, id DESC';
+  const sql = 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE deleted = 0' + (q ? ' AND name LIKE ?' : '') + ' ORDER BY updated_at DESC, id DESC';
   const rows = q ? db.prepare(sql).all(like(q)) : db.prepare(sql).all();
   res.json({ ok: true, data: rows.map(function (r) { return toListRow(c, r); }) });
 });
@@ -209,9 +202,9 @@ router.put('/:type/:id', (req, res) => {
 
   try {
     const result = db.transaction(function () {
-      const cur = db.prepare('SELECT id, name FROM ' + c.table + ' WHERE id = ?').get(id);
+      const cur = db.prepare('SELECT id, name FROM ' + c.table + ' WHERE deleted = 0 AND id = ?').get(id);
       if (!cur) return { notFound: true };
-      const dup = db.prepare('SELECT id FROM ' + c.table + ' WHERE name_norm = ? AND id <> ?').get(values.name_norm, id);
+      const dup = db.prepare('SELECT id FROM ' + c.table + ' WHERE deleted = 0 AND name_norm = ? AND id <> ?').get(values.name_norm, id);
       if (dup) return { duplicated: true };
       const renamed = values.name_norm !== normName(cur.name);
       db.prepare('UPDATE ' + c.table +
@@ -241,7 +234,7 @@ router.put('/:type/:id', (req, res) => {
   }
 });
 
-// DELETE /api/archives/:type/:id —— 统一删除入口：引用数 > 0 一律拦截（事务内校验 + 删除）
+// DELETE /api/archives/:type/:id —— 统一删除入口：引用数 > 0 拦截；否则移入回收站（软删除）
 router.delete('/:type/:id', (req, res) => {
   const key = String(req.params.type || '').trim();
   const c = cfg(key);
@@ -251,19 +244,23 @@ router.delete('/:type/:id', (req, res) => {
     return res.status(400).json({ ok: false, message: '档案编号无效' });
   }
   const result = db.transaction(function () {
-    const cur = db.prepare('SELECT id, name FROM ' + c.table + ' WHERE id = ?').get(id);
+    const cur = db.prepare('SELECT id, name FROM ' + c.table + ' WHERE deleted = 0 AND id = ?').get(id);
     if (!cur) return { notFound: true };
-    const refCount = countReferences(c, cur.name);
+    const refCount = countReferences(db, c, cur.name);
     if (refCount > 0) return { referenced: refCount };
-    db.prepare('DELETE FROM ' + c.table + ' WHERE id = ?').run(id);
+    // 改名释放 name_norm 唯一键；原名叫 original_name，可在回收站恢复
+    const recycleName = cur.name + '__DEL_' + id;
+    db.prepare('UPDATE ' + c.table +
+      ' SET name = ?, name_norm = ?, original_name = ?, deleted = 1, deleted_at = ?, updated_at = ? WHERE id = ?'
+    ).run(recycleName, normName(recycleName), cur.name, nowText(), nowText(), id);
     writeLog(db, {
       project_no: 'archive_' + key,
       project_name: c.label + '档案：' + cur.name,
       op_type: '档案维护',
       operator: req.user && req.user.username,
-      summary: c.label + '档案删除：' + cur.name
+      summary: c.label + '档案移入回收站：' + cur.name + '（可在回收站恢复）'
     });
-    return { deleted: true };
+    return { deleted: true, recycled: true };
   })();
   if (result.notFound) return res.status(404).json({ ok: false, message: '档案不存在' });
   if (result.referenced > 0) {
@@ -273,7 +270,7 @@ router.delete('/:type/:id', (req, res) => {
       message: '该单位正在被 ' + result.referenced + ' 个项目引用，无法删除，请先修改关联项目'
     });
   }
-  res.json({ ok: true, data: { deleted: true } });
+  res.json({ ok: true, data: { deleted: true, recycled: true } });
 });
 
 module.exports = router;

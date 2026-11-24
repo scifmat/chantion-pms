@@ -83,6 +83,10 @@
           v-show="current === '操作记录'"
           :active="current === '操作记录'"
         />
+        <RecycleBin
+          v-show="current === '回收站'"
+          :active="current === '回收站'"
+        />
       </div>
     </main>
   </div>
@@ -100,7 +104,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import {
-  List, OfficeBuilding, Briefcase, Trophy, Clock, Setting, DataAnalysis
+  List, OfficeBuilding, Briefcase, Trophy, Clock, Setting, DataAnalysis, Delete
 } from '@element-plus/icons-vue'
 import logoUrl from './assets/logo.svg'
 import ProjectList from './views/ProjectList.vue'
@@ -111,6 +115,7 @@ import ArchiveDashboard from './views/ArchiveDashboard.vue'
 import SystemManage from './views/SystemManage.vue'
 import GlobalDashboard from './views/GlobalDashboard.vue'
 import OperationLogs from './views/OperationLogs.vue'
+import RecycleBin from './views/RecycleBin.vue'
 import SideUserBar from './components/SideUserBar.vue'
 import LoginDialog from './components/LoginDialog.vue'
 import ChangePasswordDialog from './components/ChangePasswordDialog.vue'
@@ -129,6 +134,7 @@ const allNav = [
   { label: '代理机构', icon: Briefcase },
   { label: '竞争对手', icon: Trophy },
   { label: '操作记录', icon: Clock, needLogin: true },
+  { label: '回收站', icon: Delete, needLogin: true },
   { label: '系统管理', icon: Setting, needAdmin: true }
 ]
 const visibleNav = computed(function () {
@@ -172,6 +178,7 @@ watch([isLoggedIn, isAdmin], function () {
   if (current.value === '系统管理' && !isAdmin.value) current.value = '项目列表'
   if (current.value === '操作记录' && !isLoggedIn.value) current.value = '项目列表'
   if (current.value === '数据看板' && !isLoggedIn.value) current.value = '项目列表'
+  if (current.value === '回收站' && !isLoggedIn.value) current.value = '项目列表'
 })
 
 function goDetail(id) {

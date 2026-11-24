@@ -244,14 +244,14 @@ async function remove(r) {
   }
   try {
     await ElMessageBox.confirm(
-      '确定删除档案「' + r.name + '」吗？删除后不可恢复。',
+      '确定删除档案「' + r.name + '」吗？删除后会移入「回收站」，可在回收站恢复。',
       '删除确认',
       { confirmButtonText: '确定删除', cancelButtonText: '取消', type: 'warning' }
     )
   } catch (e) { return } // 用户取消
   try {
     await deleteArchive(props.type, r.id)
-    toastSuccess('档案已删除')
+    toastSuccess('档案已移入回收站')
     await load()
   } catch (e) {
     toastError(e.message)

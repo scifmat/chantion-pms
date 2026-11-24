@@ -90,6 +90,7 @@ jobs:
           node _test/scripts/test-global-dashboard.mjs
           node _test/scripts/test-oplog-permission.mjs
           node _test/scripts/test-operation-log-expansion.mjs
+          node _test/scripts/test-recycle-bin.mjs
           node _test/scripts/test-system-settings.mjs
           node _test/scripts/test-year-filter.mjs
 

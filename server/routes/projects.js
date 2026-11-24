@@ -295,15 +295,15 @@ router.delete('/:id', (req, res) => {
       // 释放原编号：软删除行不再占用 project_no UNIQUE，删除后可重新使用同一编号；
       // 原行仍完整保留（deleted=1），操作记录里存的是删除前的原编号，可追溯。
       const r = db.prepare(
-        'UPDATE projects SET deleted = 1, project_no = ?, updated_at = ?, version = version + 1 WHERE row_id = ? AND version = ? AND deleted = 0'
-      ).run(cur.project_no + '__DEL_' + id, t, id, version);
+        'UPDATE projects SET deleted = 1, deleted_at = ?, project_no = ?, updated_at = ?, version = version + 1 WHERE row_id = ? AND version = ? AND deleted = 0'
+      ).run(t, cur.project_no + '__DEL_' + id, t, id, version);
       if (!r.changes) return { changes: 0 };
       // 软删除同时清理映射：即使编号日后被复用，也不会残留旧聚合行
       db.prepare('DELETE FROM project_winners WHERE project_no = ?').run(cur.project_no);
       writeLog(db, {
         project_no: cur.project_no, project_name: cur.project_name,
         op_type: '删除项目',
-        summary: '删除项目「' + cur.project_name + '」（' + cur.project_no + '），软删除保留数据',
+        summary: '删除项目「' + cur.project_name + '」（' + cur.project_no + '），移入回收站，可在回收站恢复',
         operator: (req.user && req.user.username) || OPERATOR, created_at: t
       });
       return { changes: r.changes };

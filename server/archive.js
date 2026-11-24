@@ -30,6 +30,15 @@ function nowText() {
 function text(v) { return String(v == null ? '' : v).trim(); }
 
 /** 名称归一化：去所有空白 + 全半角归一 + 小写（与前端 normPkg 同口径） */
+/** 统计正常项目对某档案名的引用数（字符串快照口径，非外键）。回收站列表/删除校验共用。 */
+function countReferences(db, config, name) {
+  if (!config || !config.projectCol) return 0;
+  const n = String(name == null ? '' : name).trim();
+  if (!n) return 0;
+  return db.prepare('SELECT COUNT(*) AS n FROM projects WHERE deleted = 0 AND ' + config.projectCol + ' LIKE ?')
+    .get('%' + n + '%').n;
+}
+
 function normName(v) {
   return text(v).replace(/\s+/g, '')
     .replace(/[\uff01-\uff5e]/g, function (ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
@@ -227,6 +236,6 @@ function backfillArchives(db) {
 }
 
 module.exports = {
-  TABLES, UNIT_ATTRIBUTES, normName, extractArchives, upsertArchives, backfillArchives,
+  TABLES, UNIT_ATTRIBUTES, normName, countReferences, extractArchives, upsertArchives, backfillArchives,
   normFieldValue, parseArchiveValues, serializeArchiveValues, displayArchiveValues, appendUniqueValues
 };

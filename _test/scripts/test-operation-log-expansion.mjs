@@ -91,7 +91,7 @@ async function main() {
     const del = await api('/api/archives/buyer/' + zeroId, { method: 'DELETE', headers: auth(adminToken) })
     check('零引用档案删除成功', del.status === 200 && del.data.data.deleted === true, JSON.stringify(del.data))
     const delLogs = (await api('/api/operation-logs?type=' + encodeURIComponent('档案维护') + '&no=archive_buyer', { headers: auth(adminToken) })).data.data
-    check('生成档案维护日志（删除）', delLogs.some(l => l.summary.includes('档案删除') && l.summary.includes('零引用删除测试单位')),
+    check('生成档案维护日志（删除）', delLogs.some(l => l.summary.includes('移入回收站') && l.summary.includes('零引用删除测试单位')),
       JSON.stringify(delLogs.map(l => l.summary)))
 
     console.log('\n[C] 数据导出 -> 数据导出')

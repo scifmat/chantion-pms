@@ -9,6 +9,7 @@
 // 008：第 9 步建 users 表 + 单管理员唯一索引，并幂等生成默认管理员账号
 // 009：第 16 步建 system_settings 键值表 + competitors.is_self（唯一本企业）
 // 010：第 17 步建 project_winners 规范化映射表（全局看板 SQL 聚合）并回填历史项目
+// 011：回收站 —— projects.deleted_at；三类档案 deleted / deleted_at / original_name
 const fs = require('fs');
 const path = require('path');
 const { mergeDetail } = require('./detail');
@@ -95,6 +96,25 @@ const MIGRATIONS = [
     id: '010',
     tables: ['project_winners'],
     ddl: 'winners-schema.sql'
+  },
+  {
+    // 011：回收站。档案三类表各补 3 列；原唯一键靠软删除时改名释放，不改索引结构
+    id: '011',
+    columns: [
+      { name: 'deleted_at', sql: "ALTER TABLE projects ADD COLUMN deleted_at TEXT NOT NULL DEFAULT ''" }
+    ],
+    archiveTables: ['buyers', 'agencies', 'competitors'],
+    archiveColumns: [
+      { name: 'deleted',      sql: 'ALTER TABLE {table} ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0' },
+      { name: 'deleted_at',   sql: "ALTER TABLE {table} ADD COLUMN deleted_at TEXT NOT NULL DEFAULT ''" },
+      { name: 'original_name', sql: "ALTER TABLE {table} ADD COLUMN original_name TEXT NOT NULL DEFAULT ''" }
+    ],
+    indexes: [
+      'CREATE INDEX IF NOT EXISTS idx_projects_deleted_at ON projects(deleted, deleted_at)',
+      'CREATE INDEX IF NOT EXISTS idx_buyers_deleted_at ON buyers(deleted, deleted_at)',
+      'CREATE INDEX IF NOT EXISTS idx_agencies_deleted_at ON agencies(deleted, deleted_at)',
+      'CREATE INDEX IF NOT EXISTS idx_competitors_deleted_at ON competitors(deleted, deleted_at)'
+    ]
   }
 ];
 
@@ -162,6 +182,26 @@ function runMigrations(db) {
         ? 'added ' + migration.column.name + ' to: ' + addedTables.join(', ')
         : 'columns already up to date'));
       if (addedTables.length) applied.push(migration.id + ':columns');
+    }
+    // 档案多列型（011）：对多张档案表逐一补多列
+    if (migration.archiveTables && migration.archiveColumns) {
+      const addedTables = [];
+      migration.archiveTables.forEach(function (table) {
+        const existing = new Set(db.prepare('PRAGMA table_info(' + table + ')').all().map(function (c) { return c.name; }));
+        let changed = false;
+        migration.archiveColumns.forEach(function (col) {
+          if (!existing.has(col.name)) { db.exec(col.sql.replace('{table}', table)); changed = true; }
+        });
+        if (changed) addedTables.push(table);
+      });
+      console.log('[MIGRATION ' + migration.id + '] ' + (addedTables.length
+        ? 'recycle columns added to: ' + addedTables.join(', ')
+        : 'recycle columns already up to date'));
+      if (addedTables.length) applied.push(migration.id + ':archive-columns');
+    }
+    // 索引型（011）：IF NOT EXISTS，重复执行安全
+    if (migration.indexes) {
+      migration.indexes.forEach(function (sql) { db.exec(sql); });
     }
     // 建表型（004 / 005 / 006 / 008 / 009）：放在补列之后，允许 DDL 内建依赖新列的索引
     if (migration.tables) {
