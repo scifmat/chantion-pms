@@ -67,13 +67,16 @@
         <tbody>
           <tr v-for="r in rows" :key="r.row_id">
             <td v-cell-align class="status-cell"><span class="status-tag" :data-status="r.status">{{ r.status }}</span></td>
-            <td v-cell-align class="cell-wrap" :title="r.project_name">{{ r.project_name }}</td>
+            <td v-cell-align class="cell-wrap" :title="r.project_name">
+              <button class="project-name-link" @click="emit('go-detail', r.row_id)">{{ r.project_name }}</button>
+            </td>
             <td v-cell-align class="cell-ellip no-cell-align region-cell" :title="r.region">{{ r.region || '—' }}</td>
             <td v-cell-align class="cell-ellip">{{ moneyCell(r.budget_yuan, r.budget_fen) }}</td>
             <td v-cell-align class="cell-ellip">{{ moneyCell(r.award_amount_yuan, r.award_amount_fen) }}</td>
             <td v-cell-align class="cell-ellip">{{ r.award_time || '—' }}</td>
             <td v-cell-align class="cell-ellip col-frozen">
-              <button class="btn sm" @click="emit('go-detail', r.row_id)">查看</button>
+              <a v-if="r.notice_url" class="btn sm" :href="r.notice_url" target="_blank" rel="noopener noreferrer">公告</a>
+              <button v-else class="btn sm" disabled title="当前项目未填写公告网址">公告</button>
               <template v-if="canWrite">
                 <button class="btn sm" style="margin-left:5px" @click="openEdit(r)">编辑</button>
                 <button class="btn sm danger" style="margin-left:5px" @click="confirmDelete(r)">删除</button>

@@ -77,6 +77,7 @@ jobs:
           node _test/scripts/test-auth.mjs
           node _test/scripts/test-archives.mjs
           node _test/scripts/test-default-sort.mjs
+          node _test/scripts/test-notice-url.mjs
           node _test/scripts/test-export-api.mjs
           node _test/scripts/test-export-columns.mjs
           node _test/scripts/test-export-conditions.mjs

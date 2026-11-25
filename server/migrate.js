@@ -10,6 +10,7 @@
 // 009：第 16 步建 system_settings 键值表 + competitors.is_self（唯一本企业）
 // 010：第 17 步建 project_winners 规范化映射表（全局看板 SQL 聚合）并回填历史项目
 // 011：回收站 —— projects.deleted_at；三类档案 deleted / deleted_at / original_name
+// 012：projects.notice_url —— 当前状态对应公告网址（由 detail 派生，随新增/编辑同事务更新）
 const fs = require('fs');
 const path = require('path');
 const { mergeDetail } = require('./detail');
@@ -114,6 +115,13 @@ const MIGRATIONS = [
       'CREATE INDEX IF NOT EXISTS idx_buyers_deleted_at ON buyers(deleted, deleted_at)',
       'CREATE INDEX IF NOT EXISTS idx_agencies_deleted_at ON agencies(deleted, deleted_at)',
       'CREATE INDEX IF NOT EXISTS idx_competitors_deleted_at ON competitors(deleted, deleted_at)'
+    ]
+  },
+  {
+    // 012：列表直出公告网址，避免为了取 URL 把整份 detail 下发到前端
+    id: '012',
+    columns: [
+      { name: 'notice_url', sql: "ALTER TABLE projects ADD COLUMN notice_url TEXT NOT NULL DEFAULT ''" }
     ]
   }
 ];

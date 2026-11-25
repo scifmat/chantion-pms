@@ -11,10 +11,10 @@
  */
 const { normalizeAmount } = require('./money');
 
-// 003 迁移新增的 7 个派生列；顺序即 INSERT / UPDATE / backfill 的取值顺序
+// 003 迁移新增的 7 个派生列 + 012 的公告网址列；顺序即 INSERT / UPDATE / backfill 的取值顺序
 const DERIVED_COLUMNS = [
   'bid_end', 'method', 'period_days', 'winner_names',
-  'project_types', 'buyer_name', 'agency_name'
+  'project_types', 'buyer_name', 'agency_name', 'notice_url'
 ];
 
 function text(v) { return String(v == null ? '' : v).trim(); }
@@ -69,6 +69,16 @@ function projectTypes(c) {
     if (s) list.push(s);
   }
   return list.filter(function (x, i) { return list.indexOf(x) === i; }).join(',');
+}
+
+/** 当前状态对应的公告网址：意向/招标/终止/完成各取自己的 URL，状态切换后立即生效 */
+function noticeUrl(d) {
+  const status = text(d.public && d.public.status);
+  if (status === '意向公示') return text(d.intention && d.intention.url);
+  if (status === '正在招标') return text(d.bidding && d.bidding.url);
+  if (status === '终止招标') return text(d.terminated && d.terminated.url);
+  if (status === '完成招标') return text(d.completed && d.completed.url);
+  return '';
 }
 
 /** 中标单位：总/分包全覆盖，牵头在前、成员随后、按包顺序；去空，逗号后不加空格 */
@@ -157,9 +167,10 @@ function deriveFromDetail(d) {
       winner_names: winnerNames(c),
       project_types: projectTypes(c),
       buyer_name: text(d.buyer.name),
-      agency_name: text(d.agency.name)
+      agency_name: text(d.agency.name),
+      notice_url: noticeUrl(d)
     }
   };
 }
 
-module.exports = { DERIVED_COLUMNS, deriveFromDetail, normalizeDetailAmounts, sumYuanText, projectTypes, winnerNames };
+module.exports = { DERIVED_COLUMNS, deriveFromDetail, normalizeDetailAmounts, sumYuanText, projectTypes, winnerNames, noticeUrl };

@@ -29,7 +29,7 @@ function normPkg(s) {
 }
 
 // 列表只取展示/查询用的派生列，不传大 JSON；单条回显才带 detail
-const LIST_COLUMNS = 'row_id, project_no, project_name, budget_yuan, budget_fen, region, status, created_at, updated_at, version, award_amount_yuan, award_amount_fen, award_time, ceiling_yuan, ceiling_fen';
+const LIST_COLUMNS = 'row_id, project_no, project_name, budget_yuan, budget_fen, region, status, created_at, updated_at, version, award_amount_yuan, award_amount_fen, award_time, ceiling_yuan, ceiling_fen, notice_url';
 const FULL_COLUMNS = LIST_COLUMNS + ', detail';
 
 function withDetail(row) {
@@ -178,11 +178,11 @@ router.post('/', (req, res) => {
         `INSERT INTO projects
           (project_no, project_name, budget_yuan, budget_fen, ceiling_yuan, ceiling_fen, region, status,
            award_amount_yuan, award_amount_fen, award_time, detail, created_at, updated_at, version,
-           bid_end, method, period_days, winner_names, project_types, buyer_name, agency_name)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?)`
+           bid_end, method, period_days, winner_names, project_types, buyer_name, agency_name, notice_url)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).run(v.project_no, v.project_name, v.budget_yuan, v.budget_fen, v.ceiling_yuan, v.ceiling_fen,
         v.region, v.status, v.award_amount_yuan, v.award_amount_fen, v.award_time, v.detail, t, t,
-        v.bid_end, v.method, v.period_days, v.winner_names, v.project_types, v.buyer_name, v.agency_name);
+        v.bid_end, v.method, v.period_days, v.winner_names, v.project_types, v.buyer_name, v.agency_name, v.notice_url);
       upsertArchives(db, s.detail, v.project_no);
       // 同一事务维护 winner 映射：项目与聚合来源不会出现脱节
       replaceProjectWinners(db, v.project_no, s.detail, v.award_amount_fen);
@@ -227,12 +227,12 @@ router.put('/:id', (req, res) => {
            region = ?, status = ?, award_amount_yuan = ?, award_amount_fen = ?, award_time = ?,
            detail = ?, updated_at = ?, version = version + 1,
            bid_end = ?, method = ?, period_days = ?, winner_names = ?,
-           project_types = ?, buyer_name = ?, agency_name = ?
+           project_types = ?, buyer_name = ?, agency_name = ?, notice_url = ?
          WHERE row_id = ? AND version = ? AND deleted = 0`
       ).run(v.project_no, v.project_name, v.budget_yuan, v.budget_fen, v.ceiling_yuan, v.ceiling_fen,
         v.region, v.status, v.award_amount_yuan, v.award_amount_fen, v.award_time,
         v.detail, t,
-        v.bid_end, v.method, v.period_days, v.winner_names, v.project_types, v.buyer_name, v.agency_name,
+        v.bid_end, v.method, v.period_days, v.winner_names, v.project_types, v.buyer_name, v.agency_name, v.notice_url,
         id, version);
       if (!r.changes) return { changes: 0 };
       // 与项目更新同一事务：编辑后档案立即反映最新名称，version 乐观锁逻辑不变

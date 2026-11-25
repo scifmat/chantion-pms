@@ -474,6 +474,9 @@ body > .el-overlay-message,
 /* 档案名称链接：暗示可进入看板 */
 button.archive-name-link{border:0;background:transparent;color:#2f6fed;cursor:pointer;padding:0;font:inherit;font-size:13px;text-align:left}
 button.archive-name-link:hover{text-decoration:underline;color:#2559c9}
+/* 项目列表：名称本身进入详情，操作列的「公告」只负责打开当前状态对应的公告网址 */
+button.project-name-link{border:0;background:transparent;color:#2f6fed;cursor:pointer;padding:0;font:inherit;font-size:13px;text-align:left}
+button.project-name-link:hover{text-decoration:underline;color:#2559c9}
 
 /* ===== 第 11 步：采购单位情报看板（ECharts + 榜单） ===== */
 .section-title{font-size:14px;font-weight:600;color:#243247;margin:18px 0 12px;padding-left:10px;border-left:3px solid #2f6fed}
