@@ -20,7 +20,7 @@
         <tr v-for="r in rows" :key="r.row_id">
           <td v-cell-align class="status-cell"><span class="status-tag" :data-status="r.status">{{ r.status }}</span></td>
           <td v-cell-align class="cell-wrap" :title="r.project_types">{{ r.project_types || '—' }}</td>
-          <td v-cell-align class="cell-ellip no-cell-align region-cell" :title="r.region">{{ r.region || '—' }}</td>
+          <td v-cell-align class="cell-ellip region-cell" :title="r.region">{{ r.region || '—' }}</td>
           <td v-cell-align class="cell-ellip" :title="r.project_no">{{ r.project_no || '—' }}</td>
           <td v-cell-align class="cell-wrap" :title="r.project_name">{{ r.project_name || '—' }}</td>
           <td v-cell-align class="cell-ellip">{{ fenToWan(r.budget_yuan, r.budget_fen) }}</td>

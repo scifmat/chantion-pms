@@ -5,8 +5,7 @@
  * 实际观感不一致，现在不再做任何判断，所有单元格一律水平 + 垂直居中。
  *
  * 用法：<td v-cell-align class="cell-ellip">…</td>
- * 跳过：带 colspan 的占位/空态行，或显式标记 class="no-cell-align" 的单元格
- *       （这类单元格自带居中样式，指令不重复干预）。
+ * 跳过：带 colspan 的占位/空态行（无实际数据，不需要居中 class）。
  */
 
 const CENTER = 'cell-center'
@@ -15,7 +14,7 @@ const CENTER = 'cell-center'
 export function cellClass() { return CENTER }
 
 function apply(el) {
-  if (el.hasAttribute('colspan') || el.classList.contains('no-cell-align')) return
+  if (el.hasAttribute('colspan')) return
   // 清掉历史智能对齐遗留的 class，避免旧缓存样式继续左对齐
   el.classList.remove('cell-left')
   el.classList.add(CENTER)

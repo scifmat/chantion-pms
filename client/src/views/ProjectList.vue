@@ -70,7 +70,7 @@
             <td v-cell-align class="cell-wrap" :title="r.project_name">
               <button class="project-name-link" @click="emit('go-detail', r.row_id)">{{ r.project_name }}</button>
             </td>
-            <td v-cell-align class="cell-ellip no-cell-align region-cell" :title="r.region">{{ r.region || '—' }}</td>
+            <td v-cell-align class="cell-ellip region-cell" :title="r.region">{{ r.region || '—' }}</td>
             <td v-cell-align class="cell-ellip">{{ moneyCell(r.budget_yuan, r.budget_fen) }}</td>
             <td v-cell-align class="cell-ellip">{{ moneyCell(r.award_amount_yuan, r.award_amount_fen) }}</td>
             <td v-cell-align class="cell-ellip">{{ r.award_time || '—' }}</td>

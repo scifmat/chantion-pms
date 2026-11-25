@@ -31,8 +31,7 @@
         <DetailItem label="最高限价" :value="fmtWan(pub.ceiling_yuan, p && p.ceiling_fen)" />
       </DetailCard>
 
-      <!-- 8.3.4：项目详情页仅展示采购单位名称与代理机构名称，详细信息在左侧档案页查看 -->
-      <DetailCard title="相关单位" sub="仅展示名称">
+      <DetailCard title="相关单位">
         <DetailItem label="采购单位名称" :value="buyer.name" />
         <DetailItem label="代理机构名称" :value="agency.name" />
       </DetailCard>
