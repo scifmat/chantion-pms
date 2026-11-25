@@ -5,6 +5,8 @@ const {
   normFieldValue, serializeArchiveValues
 } = require('../archive');
 const { writeLog } = require('../operation');
+const { replaceProjectWinners } = require('../winners');
+const { invalidateGlobalCache } = require('../globalStats');
 
 const router = express.Router();
 
@@ -109,7 +111,7 @@ function syncProjectsOnRename(db, c, type, oldName, newName) {
   const oldKey = normName(oldName);
   const refCol = c.projectCol;
   const rows = db.prepare(
-    'SELECT row_id, ' + refCol + ' AS mainVal, detail FROM projects WHERE deleted = 0 AND ' + refCol + ' LIKE ?'
+    'SELECT row_id, project_no, award_amount_fen, ' + refCol + ' AS mainVal, detail FROM projects WHERE deleted = 0 AND ' + refCol + ' LIKE ?'
   ).all(like(oldName));
   if (!rows.length) return 0;
   const upd = db.prepare('UPDATE projects SET ' + refCol + ' = ?, detail = ?, updated_at = ? WHERE row_id = ?');
@@ -120,6 +122,11 @@ function syncProjectsOnRename(db, c, type, oldName, newName) {
     const detail = renameInDetail(row.detail, type, oldKey, newName);
     if (!main.changed && !detail.changed) return; // 粗筛命中但精确不匹配：不动
     upd.run(main.value, detail.detail, t, row.row_id);
+    // 竞争对手改名必须同步规范化映射：全局看板按 name_norm JOIN project_winners，
+    // 只改 detail / winner_names 会让「本企业战力卡」找不到任何中标记录。
+    if (type === 'competitor') {
+      replaceProjectWinners(db, row.project_no, detail.detail, row.award_amount_fen || 0);
+    }
     count++;
   });
   return count;
@@ -225,6 +232,7 @@ router.put('/:type/:id', (req, res) => {
     })();
     if (result.notFound) return res.status(404).json({ ok: false, message: '档案不存在' });
     if (result.duplicated) return res.status(409).json({ ok: false, message: '该名称已存在，请勿重复建档' });
+    if (result.renamed) invalidateGlobalCache(); // 名称进入全局榜单口径，刷新看板缓存
     res.json({ ok: true, data: result });
   } catch (err) {
     if (String(err.code || '').indexOf('CONSTRAINT') >= 0) {
