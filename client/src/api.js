@@ -152,11 +152,13 @@ export function searchArchives(type, q, signal, exact = false) {
 }
 
 // 只读档案列表页（含引用次数）
-export function getArchives(type, q = '') {
+export function getArchives(type, q = '', attribute = '') {
   const u = new URLSearchParams()
   u.set('type', type)
   const s = String(q == null ? '' : q).trim()
+  const a = String(attribute == null ? '' : attribute).trim()
   if (s) u.set('q', s)
+  if (a) u.set('attribute', a)
   return request('/archives?' + u.toString())
 }
 

@@ -13,6 +13,12 @@
           <label>名称关键字</label>
           <input v-model="q" placeholder="输入名称查询" @keydown.enter="load">
         </div>
+        <div class="fld">
+          <label>属性</label>
+          <ElSelect v-model="attribute" placeholder="全部属性" clearable style="width:100%">
+            <ElOption v-for="a in unitAttributes" :key="a" :label="a" :value="a" />
+          </ElSelect>
+        </div>
       </div>
       <div class="query-actions">
         <span class="spacer"></span>
@@ -182,6 +188,7 @@ const colWidths = computed(function () {
 })
 
 const q = ref('')
+const attribute = ref('')
 const rows = ref([])
 const loading = ref(false)
 const loadError = ref('')
@@ -196,14 +203,14 @@ async function load(silent) {
   if (!silent) loading.value = true
   loadError.value = ''
   try {
-    rows.value = await getArchives(props.type, q.value)
+    rows.value = await getArchives(props.type, q.value, attribute.value)
   } catch (e) {
     if (!silent) loadError.value = e.message
   } finally {
     if (!silent) loading.value = false
   }
 }
-function reset() { q.value = ''; load() }
+function reset() { q.value = ''; attribute.value = ''; load() }
 
 // 名称旁快捷搜索：新标签页打开百度检索当前输入的单位名称
 function openBaiduSearch() {

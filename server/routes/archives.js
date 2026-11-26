@@ -170,13 +170,22 @@ router.get('/', (req, res) => {
   const c = cfg(req.query && req.query.type);
   if (!c) return badType(res);
   const q = text(req.query && req.query.q);
+  const attr = text(req.query && req.query.attribute);
   const cols = c.table === 'judges'
     ? 'id, name, name_norm, leader, owner, source_project_no, created_at, updated_at'
     : 'id, name, name_norm, attribute' + (c.table === 'competitors' ? ', is_self' : '') +
       ', phone, email, address, source_project_no, created_at, updated_at';
   // 全局默认排序：最近更新的档案在前；同秒更新用 id 兜底
-  const sql = 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE deleted = 0' + (q ? ' AND name LIKE ?' : '') + ' ORDER BY updated_at DESC, id DESC';
-  const rows = q ? db.prepare(sql).all(like(q)) : db.prepare(sql).all();
+  const where = ['deleted = 0'];
+  const args = [];
+  if (q) { where.push('name LIKE ?'); args.push(like(q)); }
+  // 属性只接受白名单值；兼容历史纯文本与新格式 JSON 数组（如 ["政府机关"]）
+  if (c.table !== 'judges' && UNIT_ATTRIBUTES.indexOf(attr) >= 0) {
+    where.push('(attribute = ? OR attribute LIKE ?)');
+    args.push(attr, '%"' + attr + '"%');
+  }
+  const sql = 'SELECT ' + cols + ' FROM ' + c.table + ' WHERE ' + where.join(' AND ') + ' ORDER BY updated_at DESC, id DESC';
+  const rows = db.prepare(sql).all(...args);
   res.json({ ok: true, data: rows.map(function (r) { return toListRow(c, r); }) });
 });
 

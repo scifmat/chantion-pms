@@ -166,6 +166,12 @@ async function main() {
     const tabs = ['采购单位', '代理机构', '竞争对手']
     for (const label of tabs) {
       await openArchive(label)
+      check(label + ' 查询区有属性下拉', await evaluate(`(function(){
+        var table = Array.from(document.querySelectorAll('.archive-table-wrap')).find(function(e){ return e.offsetParent !== null; });
+        var query = table && table.previousElementSibling;
+        var flds = query ? Array.from(query.querySelectorAll('.fld')) : [];
+        return flds.length >= 2 && flds[1].textContent.includes('属性') && !!flds[1].querySelector('.el-select');
+      })()`))
       check(label + ' 有百度搜索图标', await evaluate("!!document.querySelector('.el-dialog .name-search-btn')"))
       check(label + ' 提示文案正确',
         await evaluate("document.querySelector('.el-dialog .name-search-btn').getAttribute('aria-label') === '去百度搜索该单位'"))

@@ -82,6 +82,7 @@ async function main() {
     const newBuyer = '采购单位建档测试-改名验证'
     const putBuyer = await api('PUT', '/api/archives/buyer/7', {
       name: newBuyer,
+      attribute: ['政府机关'],
       phone: ['027-88492351-1', '027-11111111'],
       email: ['test001@bdg.com'],
       address: ['采购单位建档测试地址']
@@ -103,6 +104,23 @@ async function main() {
     const buyerRow = (await api('GET', '/api/archives?type=buyer&q=' + encodeURIComponent('改名验证'))).data.data[0]
     check('联系方式按多值保存（2 个电话）', buyerRow && buyerRow.phoneList.length === 2,
       buyerRow ? JSON.stringify(buyerRow.phoneList) : '未命中')
+
+    console.log('\n[A2] 属性查询（兼容纯文本与 JSON 数组）')
+    const govRows = (await api('GET', '/api/archives?type=buyer&attribute=' + encodeURIComponent('政府机关'))).data.data
+    check('属性过滤命中 JSON 数组格式', govRows.some(function (r) { return r.id === 7; }) &&
+      govRows.every(function (r) { return String(r.attribute).indexOf('政府机关') >= 0; }),
+      JSON.stringify(govRows.map(function (r) { return r.id + ':' + r.attribute; })))
+    const entRows = (await api('GET', '/api/archives?type=buyer&attribute=' + encodeURIComponent('事业单位'))).data.data
+    check('属性过滤命中历史纯文本格式', entRows.length > 0 &&
+      entRows.every(function (r) { return String(r.attribute).indexOf('事业单位') >= 0; }) &&
+      !entRows.some(function (r) { return r.id === 7; }),
+      JSON.stringify(entRows.map(function (r) { return r.id + ':' + r.attribute; })))
+    const combined = (await api('GET', '/api/archives?type=buyer&q=' + encodeURIComponent(newBuyer) +
+      '&attribute=' + encodeURIComponent('政府机关'))).data.data
+    check('名称 + 属性组合查询', combined.length === 1 && combined[0].id === 7,
+      JSON.stringify(combined.map(function (r) { return r.id + ':' + r.name; })))
+    const invalid = (await api('GET', '/api/archives?type=buyer&attribute=' + encodeURIComponent('非法属性'))).data.data
+    check('非法属性不影响结果（白名单忽略）', invalid.length > 0)
 
     console.log('\n[B] 竞争对手（分包中标单位）改名 → winner_names + detail 分包同步')
     const newWinner = '分三包测试录入第二包中标单位-改名验证'
