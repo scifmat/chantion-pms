@@ -88,7 +88,14 @@
       <div class="archive-edit-form">
         <div class="fld">
           <label>名称 <span style="color:#d92d20">*</span></label>
-          <input v-model="form.name" placeholder="单位 / 机构名称" @keydown.enter="saveEdit">
+          <div class="name-input-wrap">
+            <input v-model="form.name" placeholder="单位 / 机构名称" @keydown.enter="saveEdit">
+            <el-tooltip content="去百度搜索该单位" placement="top">
+              <button type="button" class="name-search-btn" aria-label="去百度搜索该单位" @click="openBaiduSearch">
+                <el-icon><Search /></el-icon>
+              </button>
+            </el-tooltip>
+          </div>
         </div>
         <div class="fld">
           <label>单位属性</label>
@@ -127,13 +134,15 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { ElDialog, ElSelect, ElOption } from 'element-plus'
+import { ElDialog, ElSelect, ElOption, ElTooltip } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { getArchives, updateArchive, deleteArchive } from '../api.js'
 import { archiveLabel, UNIT_ATTRIBUTES, REF_COL_LABEL } from '../utils/archive.js'
 import MultiValueCell from '../components/MultiValueCell.vue'
 import SelfBadge from '../components/SelfBadge.vue'
 import { toastSuccess, toastError, toastWarning } from '../utils/toast.js'
 import { confirmAction } from '../utils/confirm.js'
+import { baiduSearchUrl } from '../utils/search.js'
 import { canWrite } from '../store/auth.js'
 import { dataVersion } from '../store/dataVersion.js'
 
@@ -195,6 +204,16 @@ async function load(silent) {
   }
 }
 function reset() { q.value = ''; load() }
+
+// 名称旁快捷搜索：新标签页打开百度检索当前输入的单位名称
+function openBaiduSearch() {
+  const name = String(form.value.name || '').trim()
+  if (!name) {
+    toastWarning('请先输入单位名称')
+    return
+  }
+  window.open(baiduSearchUrl(name), '_blank', 'noopener,noreferrer')
+}
 
 function openEdit(r) {
   form.value = {
@@ -282,6 +301,10 @@ watch(dataVersion, function () {
 <style scoped>
 .archive-edit-form { display: flex; flex-direction: column; gap: 14px; padding: 4px 0; }
 .archive-edit-form textarea { resize: vertical; min-height: 62px; }
+.name-input-wrap{position:relative}
+.name-input-wrap input{padding-right:38px}
+.name-search-btn{position:absolute;right:3px;top:3px;width:28px;height:28px;border:0;border-radius:4px;background:transparent;color:#8a94a6;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.name-search-btn:hover{color:#2f6fed;background:#eef4ff}
 .edit-hint {
   font-size: 12px;
   color: #42526e;
