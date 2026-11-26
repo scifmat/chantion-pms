@@ -88,6 +88,16 @@ async function main() {
     check('本企业已配置时返回战力卡', d.self.configured === true, JSON.stringify(d.self))
     check('本企业未进前十时提示', d.self.inTop10 === false && d.self.rank > 10, JSON.stringify(d.self))
     check('与 Top1 差距计算正确', d.self.gapWan > 0 && !!d.self.gapTo, JSON.stringify(d.self))
+    const metricKeys = ['maxAwardWan', 'minAwardWan', 'avgAwardWan', 'totalDiscountWan', 'discountRate', 'maxDiscountWan', 'minDiscountWan']
+    check('财务与竞争指标齐全且非负', metricKeys.every(function (k) {
+      return typeof d.self[k] === 'number' && d.self[k] >= 0;
+    }), JSON.stringify(d.self))
+    check('最高中标额 ≥ 最低中标额', d.self.maxAwardWan >= d.self.minAwardWan, JSON.stringify(d.self))
+    check('平均中标额落在极值区间',
+      d.self.avgAwardWan >= d.self.minAwardWan && d.self.avgAwardWan <= d.self.maxAwardWan, JSON.stringify(d.self))
+    check('让利极值合理且比率在 0~100',
+      d.self.maxDiscountWan >= d.self.minDiscountWan && d.self.discountRate >= 0 && d.self.discountRate <= 100,
+      JSON.stringify(d.self))
     const originalSettings = (await api('GET', '/api/system/settings')).data.data
     const noSelfSettings = await api('PUT', '/api/system/settings', { systemName: originalSettings.systemName, selfCompetitorId: 0 })
     check('临时取消本企业成功', noSelfSettings.status === 200)

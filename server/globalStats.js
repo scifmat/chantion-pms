@@ -91,6 +91,30 @@ function computeGlobal(db, year) {
   }).slice(0, 10);
   const selfRow = competitorRows.find(function (r) { return r.is_self === 1; });
   const top1 = competitorRows[0];
+  // 本企业专属财务指标：先按项目汇总本企业中标额（分包取实际参与包），
+  // 再在整数分上算让利；预算按项目只取一次，避免多 winner 行重复计入。
+  const selfMetrics = db.prepare(
+    'WITH self_projects AS (' +
+    ' SELECT p.project_no, SUM(pw.award_fen) AS award_fen, MAX(p.budget_fen) AS budget_fen' +
+    ' FROM project_winners pw' +
+    " JOIN projects p ON p.project_no = pw.project_no AND p.deleted = 0 AND p.status = '完成招标'" + pYW +
+    ' JOIN competitors c ON c.name_norm = pw.winner_norm AND c.is_self = 1' +
+    ' GROUP BY p.project_no' +
+    '), discounts AS (' +
+    ' SELECT award_fen, budget_fen,' +
+    ' CASE WHEN budget_fen > award_fen THEN budget_fen - award_fen ELSE 0 END AS discount_fen' +
+    ' FROM self_projects' +
+    ')' +
+    ' SELECT COUNT(*) AS n,' +
+    ' COALESCE(SUM(award_fen), 0) AS award_fen,' +
+    ' COALESCE(MIN(award_fen), 0) AS min_award_fen,' +
+    ' COALESCE(MAX(award_fen), 0) AS max_award_fen,' +
+    ' COALESCE(SUM(budget_fen), 0) AS budget_fen,' +
+    ' COALESCE(SUM(discount_fen), 0) AS discount_fen,' +
+    ' COALESCE(MIN(discount_fen), 0) AS min_discount_fen,' +
+    ' COALESCE(MAX(discount_fen), 0) AS max_discount_fen' +
+    ' FROM discounts'
+  ).get();
   let self;
   if (!selfRow) {
     self = { configured: false };
@@ -98,6 +122,8 @@ function computeGlobal(db, year) {
     const selfFen = Number(selfRow.award_fen);
     const topFen = top1 ? Number(top1.award_fen) : 0;
     const rank = Number(selfRow.rank);
+    const m = selfMetrics || {};
+    const selfProjectCount = Number(m.n || 0);
     self = {
       configured: true,
       inTop10: rank <= 10,
@@ -108,7 +134,14 @@ function computeGlobal(db, year) {
       sharePct: pct(selfFen, Number(award.award)),
       isTop1: rank === 1,
       gapWan: rank === 1 ? 0 : wan(topFen - selfFen),
-      gapTo: rank === 1 ? '' : (top1 ? top1.name : '')
+      gapTo: rank === 1 ? '' : (top1 ? top1.name : ''),
+      maxAwardWan: wan(m.max_award_fen),
+      minAwardWan: wan(m.min_award_fen),
+      avgAwardWan: wan(selfProjectCount ? Math.round(Number(m.award_fen || 0) / selfProjectCount) : 0),
+      totalDiscountWan: wan(m.discount_fen),
+      discountRate: pct(Number(m.discount_fen || 0), Number(m.budget_fen || 0)),
+      maxDiscountWan: wan(m.max_discount_fen),
+      minDiscountWan: wan(m.min_discount_fen)
     };
   }
 
