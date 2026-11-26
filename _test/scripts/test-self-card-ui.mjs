@@ -173,6 +173,24 @@ async function main() {
     check('键值间距 8~12px', align.every(function (c) { return c.gap >= 8 && c.gap <= 12; }), JSON.stringify(align))
     const rowGap = await evaluate("getComputedStyle(document.querySelector('.self-metric-col')).rowGap")
     check('行间距 12~16px', parseFloat(rowGap) >= 12 && parseFloat(rowGap) <= 16, String(rowGap))
+    const valueFont = await evaluate("parseFloat(getComputedStyle(document.querySelector('.self-metric b')).fontSize)")
+    check('宽屏指标数值字号 ≥16px', valueFont >= 16, String(valueFont))
+    check('指标数值未被截断', await evaluate(`Array.from(document.querySelectorAll('.self-metric b')).every(function(b){
+      return b.scrollWidth <= b.clientWidth + 1;
+    })`))
+
+    console.log('\n[A3] Top1 差距横幅')
+    const banner = await evaluate(`(function(){
+      var box = document.querySelector('.self-gap');
+      if (!box) return null;
+      var label = box.querySelector('span').getBoundingClientRect();
+      var value = box.querySelector('b').getBoundingClientRect();
+      var s = getComputedStyle(box);
+      return { direction: s.flexDirection, stacked: value.top >= label.bottom - 2,
+               valueFont: parseFloat(getComputedStyle(box.querySelector('b')).fontSize) };
+    })()`)
+    check('标签与金额上下两行', !!banner && banner.direction === 'column' && banner.stacked, JSON.stringify(banner))
+    check('差距金额字号 ≥22px', !!banner && banner.valueFont >= 22, JSON.stringify(banner))
 
     console.log('\n[B] 与左侧榜单对齐')
     const heights = await evaluate(`(function(){

@@ -198,16 +198,17 @@ async function load(refresh) {
 .self-card{display:flex;flex-direction:column;background:linear-gradient(160deg,#fff,#fbfdff)}
 .self-empty{flex:1;font-size:13px;color:#8a94a6;line-height:1.8;padding:16px 4px}
 .self-name{font-size:15px;font-weight:600;color:#243247;margin-bottom:12px}
-.self-metrics{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;--self-label-w:74px}
+.self-metrics{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;--self-label-w:70px}
 .self-metric-col{display:grid;grid-auto-rows:1fr;row-gap:12px;min-width:0}
 .self-metric{display:grid;grid-template-columns:var(--self-label-w) minmax(0,1fr);column-gap:8px;align-items:baseline;min-width:0;border-bottom:1px dashed #e8edf5;padding:0 2px 8px}
 .self-metric span{font-size:11px;color:#8a94a6;white-space:nowrap}
-.self-metric b{font-size:14px;font-weight:700;color:#2f6fed;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.self-metric small{font-size:11px;font-weight:400;color:#8a94a6}
+.self-metric b{font-size:15px;font-weight:700;color:#2f6fed;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.self-metric small{font-size:10px;font-weight:400;color:#8a94a6}
 .self-gap,.self-lead{margin-top:12px;padding:10px 12px;border-radius:6px;font-size:12px;line-height:1.6}
-.self-gap{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:#fff7e6;border:1px solid #f7ddc0;color:#8a5a1f}
-.self-gap b{font-size:17px;color:#b54708;white-space:nowrap;font-variant-numeric:tabular-nums}
-.self-gap small{font-size:11px;font-weight:400;color:#b54708}
+.self-gap{display:flex;flex-direction:column;align-items:flex-start;gap:2px;background:#fff7e6;border:1px solid #f7ddc0;color:#8a5a1f}
+.self-gap b{font-size:24px;line-height:1.25;color:#b54708;white-space:nowrap;font-variant-numeric:tabular-nums}
+.self-gap small{font-size:12px;font-weight:400;color:#b54708}
 .self-lead{background:#e8f7ee;border:1px solid #b7ebc8;color:#137a4b}
+@media(min-width:1366px){.self-metric b{font-size:16px}}
 @media(max-width:1100px){.overview-grid,.competition-grid,.geo-grid{grid-template-columns:1fr}}
 </style>
