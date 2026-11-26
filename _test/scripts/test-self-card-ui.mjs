@@ -135,10 +135,44 @@ async function main() {
     const metricCount = await evaluate("document.querySelectorAll('.self-card .self-metric').length")
     check('10 个指标齐全', metricCount === 10, String(metricCount))
     const labels = await evaluate("Array.from(document.querySelectorAll('.self-card .self-metric span')).map(function(e){return e.textContent.trim()})")
-    const expected = ['全局排名', '市占率', '中标项目', '中标总额', '平均中标额', '最高中标额', '总让利金额', '让利率', '最高让利额', '最低让利额']
-    check('标签文案与顺序正确', JSON.stringify(labels) === JSON.stringify(expected), JSON.stringify(labels))
+    const expected = ['全局排名', '中标项目', '平均中标额', '总让利金额', '最高让利额',
+      '市占率', '中标总额', '最高中标额', '让利率', '最低让利额']
+    check('标签文案与列优先顺序正确', JSON.stringify(labels) === JSON.stringify(expected), JSON.stringify(labels))
     const cols = await evaluate("getComputedStyle(document.querySelector('.self-metrics')).gridTemplateColumns")
     check('两列网格', String(cols).trim().split(/\s+/).length === 2, String(cols))
+    check('左右列各 5 项', await evaluate(`(function(){
+      var cs = document.querySelectorAll('.self-metric-col');
+      return cs.length === 2 && cs[0].querySelectorAll('.self-metric').length === 5 && cs[1].querySelectorAll('.self-metric').length === 5;
+    })()`))
+
+    console.log('\n[A2] 键值同行与对齐')
+    const align = await evaluate(`(function(){
+      var cols = Array.from(document.querySelectorAll('.self-metric-col'));
+      return cols.map(function(col){
+        var items = Array.from(col.querySelectorAll('.self-metric'));
+        var spans = items.map(function(it){ return it.querySelector('span').getBoundingClientRect(); });
+        var bs = items.map(function(it){ return it.querySelector('b').getBoundingClientRect(); });
+        var spanX = spans.map(function(r){ return r.left; });
+        var bX = bs.map(function(r){ return r.left; });
+        var sameLine = items.every(function(it){
+          var a = it.querySelector('span').getBoundingClientRect();
+          var b = it.querySelector('b').getBoundingClientRect();
+          return Math.abs(a.top - b.top) <= 6;
+        });
+        return {
+          labelAligned: Math.max.apply(null, spanX) - Math.min.apply(null, spanX) <= 1,
+          valueAligned: Math.max.apply(null, bX) - Math.min.apply(null, bX) <= 1,
+          sameLine: sameLine,
+          gap: Math.round(bs[0].left - spans[0].right)
+        };
+      });
+    })()`)
+    check('每列键名左对齐', align.every(function (c) { return c.labelAligned; }), JSON.stringify(align))
+    check('每列数值左对齐', align.every(function (c) { return c.valueAligned; }), JSON.stringify(align))
+    check('键名与数值同行', align.every(function (c) { return c.sameLine; }), JSON.stringify(align))
+    check('键值间距 8~12px', align.every(function (c) { return c.gap >= 8 && c.gap <= 12; }), JSON.stringify(align))
+    const rowGap = await evaluate("getComputedStyle(document.querySelector('.self-metric-col')).rowGap")
+    check('行间距 12~16px', parseFloat(rowGap) >= 12 && parseFloat(rowGap) <= 16, String(rowGap))
 
     console.log('\n[B] 与左侧榜单对齐')
     const heights = await evaluate(`(function(){

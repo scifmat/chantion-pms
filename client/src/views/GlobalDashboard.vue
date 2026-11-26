@@ -56,35 +56,39 @@
           <template v-else>
             <div class="self-name">{{ data.self.name }} <SelfBadge :name="data.self.name" /></div>
             <div class="self-metrics">
-              <div class="self-metric">
-                <span>全局排名</span><b>第 {{ data.self.rank }} 名 <em v-if="!data.self.inTop10">未进入前十</em></b>
+              <div class="self-metric-col">
+                <div class="self-metric">
+                  <span>全局排名</span><b>第 {{ data.self.rank }} 名</b>
+                </div>
+                <div class="self-metric">
+                  <span>中标项目</span><b>{{ data.self.projectCount }} <small>个</small></b>
+                </div>
+                <div class="self-metric">
+                  <span>平均中标额</span><b>{{ fixed(data.self.avgAwardWan) }} <small>万元</small></b>
+                </div>
+                <div class="self-metric">
+                  <span>总让利金额</span><b>{{ fixed(data.self.totalDiscountWan) }} <small>万元</small></b>
+                </div>
+                <div class="self-metric">
+                  <span>最高让利额</span><b>{{ fixed(data.self.maxDiscountWan) }} <small>万元</small></b>
+                </div>
               </div>
-              <div class="self-metric">
-                <span>市占率</span><b>{{ fixed(data.self.sharePct) }}%</b>
-              </div>
-              <div class="self-metric">
-                <span>中标项目</span><b>{{ data.self.projectCount }} <small>个</small></b>
-              </div>
-              <div class="self-metric">
-                <span>中标总额</span><b>{{ fixed(data.self.awardWan) }} <small>万元</small></b>
-              </div>
-              <div class="self-metric">
-                <span>平均中标额</span><b>{{ fixed(data.self.avgAwardWan) }} <small>万元</small></b>
-              </div>
-              <div class="self-metric">
-                <span>最高中标额</span><b>{{ fixed(data.self.maxAwardWan) }} <small>万元</small></b>
-              </div>
-              <div class="self-metric">
-                <span>总让利金额</span><b>{{ fixed(data.self.totalDiscountWan) }} <small>万元</small></b>
-              </div>
-              <div class="self-metric">
-                <span>让利率</span><b>{{ fixed(data.self.discountRate) }}%</b>
-              </div>
-              <div class="self-metric">
-                <span>最高让利额</span><b>{{ fixed(data.self.maxDiscountWan) }} <small>万元</small></b>
-              </div>
-              <div class="self-metric">
-                <span>最低让利额</span><b>{{ fixed(data.self.minDiscountWan) }} <small>万元</small></b>
+              <div class="self-metric-col">
+                <div class="self-metric">
+                  <span>市占率</span><b>{{ fixed(data.self.sharePct) }}%</b>
+                </div>
+                <div class="self-metric">
+                  <span>中标总额</span><b>{{ fixed(data.self.awardWan) }} <small>万元</small></b>
+                </div>
+                <div class="self-metric">
+                  <span>最高中标额</span><b>{{ fixed(data.self.maxAwardWan) }} <small>万元</small></b>
+                </div>
+                <div class="self-metric">
+                  <span>让利率</span><b>{{ fixed(data.self.discountRate) }}%</b>
+                </div>
+                <div class="self-metric">
+                  <span>最低让利额</span><b>{{ fixed(data.self.minDiscountWan) }} <small>万元</small></b>
+                </div>
               </div>
             </div>
             <div v-if="data.self.isTop1" class="self-lead">当前位列全局第一</div>
@@ -194,12 +198,12 @@ async function load(refresh) {
 .self-card{display:flex;flex-direction:column;background:linear-gradient(160deg,#fff,#fbfdff)}
 .self-empty{flex:1;font-size:13px;color:#8a94a6;line-height:1.8;padding:16px 4px}
 .self-name{font-size:15px;font-weight:600;color:#243247;margin-bottom:12px}
-.self-metrics{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:1fr;align-content:stretch;column-gap:14px}
-.self-metric{display:flex;flex-direction:column;justify-content:center;gap:4px;min-width:0;border-bottom:1px dashed #e8edf5;padding:6px 2px}
+.self-metrics{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:14px;--self-label-w:74px}
+.self-metric-col{display:grid;grid-auto-rows:1fr;row-gap:12px;min-width:0}
+.self-metric{display:grid;grid-template-columns:var(--self-label-w) minmax(0,1fr);column-gap:8px;align-items:baseline;min-width:0;border-bottom:1px dashed #e8edf5;padding:0 2px 8px}
 .self-metric span{font-size:11px;color:#8a94a6;white-space:nowrap}
-.self-metric b{font-size:16px;font-weight:700;color:#2f6fed;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.self-metric b{font-size:14px;font-weight:700;color:#2f6fed;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .self-metric small{font-size:11px;font-weight:400;color:#8a94a6}
-.self-metric em{font-style:normal;font-size:10px;color:#c96a1f;background:#fff7e6;border:1px solid #f7ddc0;padding:0 5px;border-radius:10px;vertical-align:middle}
 .self-gap,.self-lead{margin-top:12px;padding:10px 12px;border-radius:6px;font-size:12px;line-height:1.6}
 .self-gap{display:flex;align-items:baseline;justify-content:space-between;gap:10px;background:#fff7e6;border:1px solid #f7ddc0;color:#8a5a1f}
 .self-gap b{font-size:17px;color:#b54708;white-space:nowrap;font-variant-numeric:tabular-nums}
