@@ -15,22 +15,31 @@
     </template>
   </ElDropdown>
 
-  <!-- 未登录（访客）：整卡可点击登录，头像 / 幽灵登录按钮 / 访客标签居中紧凑排列 -->
-  <div v-else class="side-user-bar guest-card" @click="showLogin = true">
+  <!-- 未登录（访客）：整卡即轻量幽灵按钮，头像 / 状态 / 去登录引导单行排列 -->
+  <div
+    v-else
+    class="side-user-bar guest-card"
+    role="button"
+    tabindex="0"
+    aria-label="去登录"
+    @click="showLogin = true"
+    @keydown.enter="showLogin = true"
+    @keydown.space.prevent="showLogin = true"
+  >
     <div class="su-avatar default-avatar" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
         <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
       </svg>
     </div>
-    <button class="su-login-btn" @click.stop="showLogin = true">登录</button>
-    <span class="su-role visitor">访客</span>
+    <span class="guest-name">未登录</span>
+    <span class="guest-action">去登录 <el-icon class="guest-arrow"><ArrowRight /></el-icon></span>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, ElMessageBox } from 'element-plus'
-import { ArrowDown } from '@element-plus/icons-vue'
+import { ArrowDown, ArrowRight } from '@element-plus/icons-vue'
 import { auth, isLoggedIn, isAdmin, roleLabel, showLogin, showPassword, clearSession } from '../store/auth.js'
 import { toastSuccess } from '../utils/toast.js'
 

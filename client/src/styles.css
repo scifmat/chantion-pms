@@ -395,12 +395,13 @@ body > .el-overlay-message,
 .su-role{display:inline-block;flex:none;font-size:10px;line-height:16px;padding:0 4px;border-radius:4px;white-space:nowrap}
 .su-role.admin{background:#6b4a1f;color:#ffcf8a;border:1px solid rgba(255,207,138,.28)}
 .su-role.normal{background:#1d3a5c;color:#8fc0ff;border:1px solid rgba(143,192,255,.28)}
-.su-role.visitor{background:rgba(255,255,255,.09);color:#9fb0c8;border:1px solid rgba(255,255,255,.08)}
 .su-caret{flex:none;font-size:12px;color:#8a94a6;display:flex;align-items:center;margin-left:auto}
-/* 未登录：头像 / 幽灵登录按钮 / 访客标签单行居中，统一 gap:8px */
-.guest-card{justify-content:center;gap:8px}
-.su-login-btn{border:1px solid rgba(143,192,255,.45);background:rgba(47,111,237,.12);color:#bcd8ff;border-radius:4px;height:24px;padding:0 10px;cursor:pointer;font:inherit;font-size:12px;white-space:nowrap;flex:none;transition:background .18s,border-color .18s}
-.su-login-btn:hover{background:rgba(47,111,237,.28);border-color:rgba(143,192,255,.75)}
+/* 访客态：与已登录卡片同高同边距，整卡即幽灵按钮，没有独立蓝色登录按钮 */
+.guest-card{width:100%;box-sizing:border-box;gap:8px}
+.guest-card:focus-visible{outline:1px solid rgba(143,192,255,.6);outline-offset:-1px}
+.guest-name{flex:0 1 auto;min-width:0;font-size:13px;color:#9fb0c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.guest-action{flex:none;margin-left:auto;display:flex;align-items:center;gap:3px;color:#8fc0ff;font-size:12px;white-space:nowrap}
+.guest-arrow{font-size:12px;line-height:1}
 /* 登录 / 修改密码弹窗表单：复用浅色主题，垂直间距统一 */
 .auth-form{display:flex;flex-direction:column;gap:14px;padding:4px 2px}
 .auth-form .fld label{color:#5b6577}
