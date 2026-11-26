@@ -97,17 +97,17 @@
             </el-tooltip>
           </div>
         </div>
+        <div class="edit-hint" v-if="form.refCount > 0">
+          已被 {{ form.refCount }} 个项目引用，改名将同步更新这些项目。
+        </div>
+        <div class="edit-hint" v-else>
+          当前无项目引用，改名不影响已有项目。
+        </div>
         <div class="fld">
           <label>单位属性</label>
           <ElSelect v-model="form.attribute" placeholder="请选择（可不填）" clearable style="width:100%">
             <ElOption v-for="a in unitAttributes" :key="a" :label="a" :value="a" />
           </ElSelect>
-        </div>
-        <div class="edit-hint" v-if="form.refCount > 0">
-          该档案被 {{ form.refCount }} 个项目引用。修改名称后，系统会同步更新这些项目列表与详情中的名称。
-        </div>
-        <div class="edit-hint" v-else>
-          当前无项目引用该档案，修改名称不会影响已有项目。
         </div>
         <div class="fld">
           <label>联系电话（每行一个）</label>

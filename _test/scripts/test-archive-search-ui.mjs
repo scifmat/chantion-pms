@@ -169,6 +169,12 @@ async function main() {
       check(label + ' 有百度搜索图标', await evaluate("!!document.querySelector('.el-dialog .name-search-btn')"))
       check(label + ' 提示文案正确',
         await evaluate("document.querySelector('.el-dialog .name-search-btn').getAttribute('aria-label') === '去百度搜索该单位'"))
+      check(label + ' 引用提示紧随名称框且已精简', await evaluate(`(function(){
+        var fld = document.querySelector('.el-dialog .name-input-wrap').parentElement;
+        var hint = fld && fld.nextElementSibling;
+        var text = hint ? hint.textContent.trim() : '';
+        return !!hint && hint.classList.contains('edit-hint') && text.length <= 30 && text.indexOf('系统') < 0;
+      })()`))
       await closeDialog()
     }
 
