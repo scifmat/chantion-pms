@@ -60,7 +60,9 @@ defineProps({
 .step.disabled { opacity: .45; }
 .step-line { flex: none; width: 36px; height: 2px; background: #e3e7ee; margin-top: 12px; }
 .step-line.done { background: #b7ebc8; }
-.tip-title { font-size: 12px; color: #5b6577; margin-bottom: 4px; }
-.tip-reason { font-size: 12px; color: #1f2937; max-width: 280px; line-height: 1.6; }
-.tip-empty { font-size: 12px; color: #94a3b8; }
+/* Tooltip 使用 Element Plus 深色浮层，内容必须显式用浅色文字保证对比度 */
+.tip-title { font-size: 12px; color: rgba(255,255,255,.95); margin-bottom: 4px; }
+.tip-reason { font-size: 12px; color: #fff; max-width: 280px; line-height: 1.6; }
+.tip-reason b { color: #fff; }
+.tip-empty { font-size: 12px; color: rgba(255,255,255,.65); }
 </style>
