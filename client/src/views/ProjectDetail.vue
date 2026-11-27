@@ -21,6 +21,9 @@
     </div>
 
     <template v-else-if="project">
+      <!-- 项目跟进：仅在已跟进项目顶部展示横向轨迹 -->
+      <TrackingSteps :stages="trackingStages" />
+
       <!-- 公共信息 -->
       <DetailCard title="公共信息">
         <DetailItem label="项目状态" :value="status" />
@@ -123,6 +126,7 @@ import DetailWinner from '../components/detail/DetailWinner.vue'
 import DetailPackageCard from '../components/detail/DetailPackageCard.vue'
 import DetailCorrectionCard from '../components/detail/DetailCorrectionCard.vue'
 import DetailJudges from '../components/detail/DetailJudges.vue'
+import TrackingSteps from '../components/tracking/TrackingSteps.vue'
 
 const props = defineProps({
   projectId: { type: [Number, String], default: null },
@@ -155,6 +159,9 @@ const status = computed(function () { return raw(pub.value.status) || '意向公
 const projectName = computed(function () { return raw(pub.value.project_name) })
 const projectNo = computed(function () { return raw(pub.value.project_no) })
 const region = computed(function () { return raw(pub.value.region) })
+const trackingStages = computed(function () {
+  return p.value && p.value.tracking && p.value.tracking.active ? (p.value.tracking.stages || []) : []
+})
 const periodText = computed(function () {
   const v = raw(bidding.value.periodDays)
   return v ? v + ' 天' : ''

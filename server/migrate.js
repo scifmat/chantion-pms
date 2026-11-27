@@ -11,6 +11,8 @@
 // 010：第 17 步建 project_winners 规范化映射表（全局看板 SQL 聚合）并回填历史项目
 // 011：回收站 —— projects.deleted_at；三类档案 deleted / deleted_at / original_name
 // 012：projects.notice_url —— 当前状态对应公告网址（由 detail 派生，随新增/编辑同事务更新）
+// 013：项目跟进 bid_trackings（project_id 关联 projects.row_id；derived_key 驱动状态自检）
+// 014：项目跟进阶段记录 bid_tracking_stages（四节点复盘/经验，当前阶段冗余到 bid_trackings）
 const fs = require('fs');
 const path = require('path');
 const { mergeDetail } = require('./detail');
@@ -21,6 +23,7 @@ const { backfillLogs } = require('./operation');
 const { seedAdmin } = require('./users');
 const { seedSystemSettings } = require('./settings');
 const { backfillWinners } = require('./winners');
+const { backfillStages } = require('./tracking');
 
 const MIGRATIONS = [
   {
@@ -123,6 +126,18 @@ const MIGRATIONS = [
     columns: [
       { name: 'notice_url', sql: "ALTER TABLE projects ADD COLUMN notice_url TEXT NOT NULL DEFAULT ''" }
     ]
+  },
+  {
+    // 013：项目跟进主表。DDL 单一来源 tracking-schema.sql，全部 IF NOT EXISTS，重复执行安全
+    id: '013',
+    tables: ['bid_trackings'],
+    ddl: 'tracking-schema.sql'
+  },
+  {
+    // 014：跟进阶段记录表。DDL 单一来源 tracking-stages-schema.sql
+    id: '014',
+    tables: ['bid_tracking_stages'],
+    ddl: 'tracking-stages-schema.sql'
   }
 ];
 
@@ -232,6 +247,8 @@ function runMigrations(db) {
   console.log('[MIGRATION 006] operation logs backfill: ' + logs.rows + ' projects checked, ' + logs.inserted + ' added, ' + logs.skipped + ' skipped');
   const winners = backfillWinners(db);
   console.log('[MIGRATION 010] project winners backfill: ' + winners.written + ' projects rebuilt');
+  const stages = backfillStages(db);
+  console.log('[MIGRATION 014] tracking stages backfill: ' + stages.rows + ' checked, ' + stages.written + ' written');
   const seeded = seedAdmin(db);            // 仅无任何管理员时生成一次，绝不覆盖已改密码
   console.log('[MIGRATION 008] admin seeded: ' + seeded);
   const systemSeeded = seedSystemSettings(db);  // 只补缺失的系统设置，不覆盖已有值

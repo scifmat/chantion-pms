@@ -65,7 +65,14 @@
             <td v-cell-align class="cell-ellip">{{ tab === 'project' ? '—' : r.ref_count }}</td>
             <td v-cell-align>
               <button class="btn sm" @click="restore(r)">恢复</button>
-              <button v-if="isAdmin" class="btn sm danger" style="margin-left:6px" @click="purge(r)">彻底删除</button>
+              <button
+                v-if="isAdmin"
+                class="btn sm danger"
+                style="margin-left:6px"
+                :disabled="tab === 'project' && !!r.tracking_owner"
+                :title="tab === 'project' && r.tracking_owner ? '该项目正由「' + r.tracking_owner + '」跟进，请先关闭跟进开关' : '物理销毁，不可恢复'"
+                @click="purge(r)"
+              >彻底删除</button>
             </td>
           </tr>
           <tr v-if="!rows.length && !loading"><td colspan="5" class="empty">回收站是空的</td></tr>

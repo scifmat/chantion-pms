@@ -56,7 +56,7 @@
       <table>
         <colgroup>
           <col><col style="width:20%"><col style="width:17%">
-          <col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:15%">
+          <col style="width:13%"><col style="width:13%"><col style="width:12%"><col style="width:18%">
         </colgroup>
         <thead>
           <tr>
@@ -75,11 +75,31 @@
             <td v-cell-align class="cell-ellip">{{ moneyCell(r.award_amount_yuan, r.award_amount_fen) }}</td>
             <td v-cell-align class="cell-ellip">{{ r.award_time || '—' }}</td>
             <td v-cell-align class="cell-ellip col-frozen">
+              <div class="track-cell" v-if="canWrite">
+                <el-switch
+                  inline-prompt
+                  active-text="已跟进"
+                  inactive-text="未跟进"
+                  width="72"
+                  style="--el-switch-on-color: #2f6fed; --el-switch-off-color: #dcdfe6"
+                  :model-value="!!r.tracking_active"
+                  :loading="switchPending === r.row_id"
+                  :disabled="!canWrite || switchPending !== null || (!!r.tracking_active && r.tracking_owner_id !== myId)"
+                  :title="switchTitle(r)"
+                  @change="toggleTracking(r)"
+                />
+              </div>
               <a v-if="r.notice_url" class="btn sm" :href="r.notice_url" target="_blank" rel="noopener noreferrer">公告</a>
               <button v-else class="btn sm" disabled title="当前项目未填写公告网址">公告</button>
               <template v-if="canWrite">
                 <button class="btn sm" style="margin-left:5px" @click="openEdit(r)">编辑</button>
-                <button class="btn sm danger" style="margin-left:5px" @click="confirmDelete(r)">删除</button>
+                <button
+                  class="btn sm danger"
+                  style="margin-left:5px"
+                  :disabled="!!r.tracking_active"
+                  :title="r.tracking_active ? '已跟进项目禁止删除，请先关闭跟进开关' : '移入回收站'"
+                  @click="confirmDelete(r)"
+                >删除</button>
               </template>
             </td>
           </tr>
@@ -103,6 +123,7 @@
       :mode="dialogMode"
       :project-id="editingId"
       :initial="editingProject"
+      :tracked="editingTracked"
       @close="dialogOpen = false"
       @saved="onSaved"
     />
@@ -112,12 +133,14 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed, watch } from 'vue'
-import { getProjects, getProject, deleteProject } from '../api.js'
+import { ElSwitch } from 'element-plus'
+import { getProjects, getProject, deleteProject, claimTracking, releaseTracking } from '../api.js'
 import { fenToWan } from '../utils/money.js'
 import { opts } from '../utils/options.js'
 import { toastSuccess, toastError } from '../utils/toast.js'
 import { confirmAction } from '../utils/confirm.js'
-import { canWrite } from '../store/auth.js'
+import { canWrite, auth } from '../store/auth.js'
+import { bumpDataVersion } from '../store/dataVersion.js'
 import ProjectForm from '../components/ProjectForm.vue'
 import DateField from '../components/form/DateField.vue'
 import RegionPicker from '../components/form/RegionPicker.vue'
@@ -137,11 +160,57 @@ const statuses = computed(function () { return opts('status') })
 const rows = ref([])
 const loading = ref(true)
 const loadError = ref('')
+const switchPending = ref(null)   // 单-flight：同一时刻只允许一个认领/关闭请求
+const myId = computed(function () { return auth.user ? auth.user.id : 0 })
+
+function switchTitle(r) {
+  if (!canWrite.value) return '登录后认领项目跟进'
+  if (switchPending.value === r.row_id) return '正在提交，请稍候…'
+  if (r.tracking_active && r.tracking_owner_id !== myId.value) {
+    return '由「' + (r.tracking_owner || '其他用户') + '」跟进，仅负责人可关闭'
+  }
+  return r.tracking_active ? '点击关闭跟进（关闭后项目可删除）' : '点击认领该项目跟进'
+}
+
+/** 完全受控：成功响应前不改 r.tracking_active，慢网络下也不会误反转或狂点。 */
+async function toggleTracking(r) {
+  if (switchPending.value !== null) return
+  if (!canWrite.value) return
+  if (r.tracking_active && r.tracking_owner_id !== myId.value) {
+    toastError('只有跟进负责人可以关闭跟进')
+    return
+  }
+  if (r.tracking_active) {
+    try {
+      await confirmAction({
+        title: '关闭跟进',
+        object: '确定关闭「' + r.project_name + '」的跟进吗？',
+        consequence: '关闭后其他成员可重新认领，该项目也将允许删除；复盘历史会保留。',
+        confirmText: '关闭跟进',
+        danger: true
+      })
+    } catch (e) { return }
+  }
+  switchPending.value = r.row_id
+  try {
+    if (r.tracking_active) await releaseTracking(r.row_id)
+    else await claimTracking(r.row_id)
+    // 通知常驻的跟踪页静默重拉，避免首页认领/关闭后切过去看到旧数据
+    bumpDataVersion()
+    await load()   // 以服务端结果为准刷新，filters 原样保留
+    toastSuccess(r.tracking_active ? '已关闭跟进' : '认领成功，你已成为跟进负责人')
+  } catch (e) {
+    toastError(e.message || '操作失败，请重试')
+  } finally {
+    switchPending.value = null
+  }
+}
 
 const dialogOpen = ref(false)
 const dialogMode = ref('add')
 const editingId = ref(null)
 const editingProject = ref(null)
+const editingTracked = ref(false)
 
 const emptyFilters = () => ({ status: '', name: '', region: '', timeStart: '', timeEnd: '' })
 const filters = reactive(emptyFilters())
@@ -195,6 +264,7 @@ function openAdd() {
   dialogMode.value = 'add'
   editingId.value = null
   editingProject.value = null
+  editingTracked.value = false
   dialogOpen.value = true
 }
 
@@ -205,6 +275,7 @@ async function openEdit(row) {
     dialogMode.value = 'edit'
     editingId.value = row.row_id
     editingProject.value = data
+    editingTracked.value = !!row.tracking_active
     dialogOpen.value = true
   } catch (e) {
     showToast(e.message, 'info')
@@ -238,3 +309,9 @@ async function confirmDelete(r) {
   }
 }
 </script>
+
+<style scoped>
+.track-cell { display: inline-flex; align-items: center; margin-right: 6px; vertical-align: middle; }
+.track-cell :deep(.el-switch) { vertical-align: middle; }
+.track-cell :deep(.el-switch__label) { white-space: nowrap; font-size: 12px; }
+</style>

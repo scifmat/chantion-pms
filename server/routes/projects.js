@@ -7,6 +7,7 @@ const { upsertArchives } = require('../archive');
 const { writeLog, OPERATOR } = require('../operation');
 const { replaceProjectWinners } = require('../winners');
 const { invalidateGlobalCache } = require('../globalStats');
+const T = require('../tracking');
 
 const router = express.Router();
 const STATUSES = ['意向公示', '正在招标', '终止招标', '完成招标'];
@@ -131,7 +132,16 @@ router.get('/', (req, res) => {
   const sql = 'SELECT ' + LIST_COLUMNS + ' FROM projects' +
     (where.length ? ' WHERE ' + where.join(' AND ') : '') +
     ' ORDER BY updated_at DESC, version DESC, row_id DESC';
-  res.json({ ok: true, data: db.prepare(sql).all(...args) });
+  const rows = db.prepare(sql).all(...args);
+  // 跟进标记一次查询补齐：不改 queryBuilder / 导出口径，也不影响未跟进项目
+  const flags = T.getFlags(db, rows.map(function (r) { return r.row_id; }));
+  rows.forEach(function (r) {
+    Object.assign(r, flags[r.row_id] || {
+      tracking_active: false, tracking_owner_id: 0, tracking_owner: '',
+      tracking_internal: '', tracking_stage: '', tracking_review_required: false
+    });
+  });
+  res.json({ ok: true, data: rows });
 });
 
 // GET /api/projects/check-no —— 即时查重（编辑时 excludeId 排除自身）
@@ -162,7 +172,19 @@ router.get('/advanced', (req, res) => {
 router.get('/:id', (req, res) => {
   const row = db.prepare('SELECT ' + FULL_COLUMNS + ' FROM projects WHERE row_id = ? AND deleted = 0').get(Number(req.params.id));
   if (!row) return res.status(404).json({ ok: false, message: '项目不存在' });
-  res.json({ ok: true, data: withDetail(row) });
+  const data = withDetail(row);
+  // 详情页顺带下发跟进阶段数据（仅已跟进项目），供顶部横向步骤条渲染
+  const tracking = db.prepare('SELECT * FROM bid_trackings WHERE project_id = ? AND is_tracking = 1').get(row.row_id);
+  data.tracking = tracking ? {
+    active: true,
+    internal_status: tracking.internal_status,
+    follow_stage: tracking.follow_stage,
+    owner_username: tracking.owner_username,
+    stages: T.getStages(db, Object.assign({}, tracking, {
+      project_status: row.status, detail: row.detail
+    }), T.nowText())
+  } : { active: false, stages: [] };
+  res.json({ ok: true, data: data });
 });
 
 // POST /api/projects —— 新增（全量表单）；主表列与 003 派生列在同一次 INSERT 中写入
@@ -264,6 +286,14 @@ router.put('/:id', (req, res) => {
         op_type: '编辑项目', summary: '编辑项目「' + v.project_name + '」（' + v.project_no + '）',
         operator: (req.user && req.user.username) || OPERATOR, created_at: t
       });
+      // 项目状态 / 截止日期变更：同一事务内同步跟进状态（顺流 / 逆流重置都在此发生）
+      const trackingRow = db.prepare('SELECT * FROM bid_trackings WHERE project_id = ? AND is_tracking = 1').get(id);
+      if (trackingRow) {
+        T.syncOne(db, {
+          row_id: id, project_no: v.project_no, project_name: v.project_name,
+          status: v.status, detail: v.detail
+        }, trackingRow, t);
+      }
       return { changes: r.changes };
     })();
     if (result.notFound) return res.status(404).json({ ok: false, message: '项目不存在' });
@@ -292,6 +322,9 @@ router.delete('/:id', (req, res) => {
       const cur = db.prepare('SELECT version, project_no, project_name FROM projects WHERE row_id = ? AND deleted = 0').get(id);
       if (!cur) return { notFound: true };
       if (cur.version !== version) return { conflict: true };
+      // 项目跟进：已跟进项目禁止删除，必须先由负责人关闭开关释放占用
+      const owner = T.blockingOwner(db, id);
+      if (owner) return { trackingBlocked: owner };
       // 释放原编号：软删除行不再占用 project_no UNIQUE，删除后可重新使用同一编号；
       // 原行仍完整保留（deleted=1），操作记录里存的是删除前的原编号，可追溯。
       const r = db.prepare(
@@ -309,6 +342,12 @@ router.delete('/:id', (req, res) => {
       return { changes: r.changes };
     })();
     if (result.notFound) return res.status(404).json({ ok: false, message: '项目不存在' });
+    if (result.trackingBlocked) {
+      return res.status(409).json({
+        ok: false,
+        message: '该项目正由「' + result.trackingBlocked + '」跟进，请先关闭跟进开关后再删除'
+      });
+    }
     if (result.conflict || result.changes === 0) {
       return res.status(409).json({ ok: false, message: '数据已被他人修改，请刷新后重试' });
     }

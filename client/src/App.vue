@@ -49,7 +49,7 @@
           v-show="current === '项目列表' && view === 'detail'"
           :project-id="detailId"
           :active="current === '项目列表' && view === 'detail'"
-          @back="view = 'list'"
+          @back="backFromDetail"
           @saved="onDetailSaved"
         />
         <ArchiveList
@@ -66,6 +66,12 @@
           v-show="current === '竞争对手'"
           type="competitor" title="竞争对手 / 中标单位" :active="current === '竞争对手'"
           @go-dashboard="openDashboard"
+        />
+        <!-- 第 18 步：项目跟进（销售团队工作台），仅登录用户可见 -->
+        <TrackingList
+          v-show="current === '项目跟进'"
+          :active="current === '项目跟进'"
+          @go-detail="function (id) { goDetail(id, '项目跟进') }"
         />
         <!-- 第 10 步：参与项目数据看板，v-show 常驻切换；返回时档案页查询状态原样保留 -->
         <ArchiveDashboard
@@ -104,7 +110,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import {
-  List, OfficeBuilding, Briefcase, Trophy, Clock, Setting, DataAnalysis, Delete
+  List, OfficeBuilding, Briefcase, Trophy, Clock, Setting, DataAnalysis, Delete, Flag
 } from '@element-plus/icons-vue'
 import logoUrl from './assets/logo.svg'
 import ProjectList from './views/ProjectList.vue'
@@ -116,6 +122,7 @@ import SystemManage from './views/SystemManage.vue'
 import GlobalDashboard from './views/GlobalDashboard.vue'
 import OperationLogs from './views/OperationLogs.vue'
 import RecycleBin from './views/RecycleBin.vue'
+import TrackingList from './views/TrackingList.vue'
 import SideUserBar from './components/SideUserBar.vue'
 import LoginDialog from './components/LoginDialog.vue'
 import ChangePasswordDialog from './components/ChangePasswordDialog.vue'
@@ -133,6 +140,7 @@ const allNav = [
   { label: '采购单位', icon: OfficeBuilding },
   { label: '代理机构', icon: Briefcase },
   { label: '竞争对手', icon: Trophy },
+  { label: '项目跟进', icon: Flag, needLogin: true },
   { label: '操作记录', icon: Clock, needLogin: true },
   { label: '回收站', icon: Delete, needLogin: true },
   { label: '系统管理', icon: Setting, needAdmin: true }
@@ -164,6 +172,7 @@ const displayLogo = computed(function () {
 })
 watch(customLogoUrl, function () { logoFailed.value = false })
 const detailId = ref(null)
+const detailFrom = ref('项目列表')  // 详情页返回时回到来源入口（项目列表 / 项目跟进）
 const listRefresh = ref(0)   // 详情页保存后 +1，列表只重新 load 数据，不动 filters
 
 // 刷新页面后静默校验本地会话：Token 有效则保留，失效则清态（不弹全局登录框）
@@ -179,11 +188,18 @@ watch([isLoggedIn, isAdmin], function () {
   if (current.value === '操作记录' && !isLoggedIn.value) current.value = '项目列表'
   if (current.value === '数据看板' && !isLoggedIn.value) current.value = '项目列表'
   if (current.value === '回收站' && !isLoggedIn.value) current.value = '项目列表'
+  if (current.value === '项目跟进' && !isLoggedIn.value) current.value = '项目列表'
 })
 
-function goDetail(id) {
+function goDetail(id, from) {
   detailId.value = id
+  detailFrom.value = from || '项目列表'
+  current.value = '项目列表'
   view.value = 'detail'
+}
+function backFromDetail() {
+  view.value = 'list'
+  current.value = detailFrom.value || '项目列表'
 }
 function onDetailSaved() { listRefresh.value++ }
 

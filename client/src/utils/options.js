@@ -9,6 +9,7 @@ import {
   setAmountUnits,
   STATUSES, METHODS, TYPES, DOC_WAYS, CORRECTION_ITEMS
 } from '../components/form/validation.js'
+import { REVIEW_REASON_DEFAULTS } from './tracking.js'
 
 export const GROUP_LABELS = {
   status: '项目状态',
@@ -16,6 +17,7 @@ export const GROUP_LABELS = {
   project_type: '项目类型 / 分包类型',
   correction_item: '更正事项（多选）',
   doc_way: '获取方式',
+  review_reason: '复盘原因分类',
   amount_unit: '金额单位（倍率）'
   // 监管地区不再是可配置下拉：改由全国三级行政区划数据驱动（utils/regions.js）
 }
@@ -27,12 +29,13 @@ const DEFAULTS = {
   project_type: TYPES.slice(),
   correction_item: CORRECTION_ITEMS.slice(),
   doc_way: DOC_WAYS.slice(),
+  review_reason: REVIEW_REASON_DEFAULTS.slice(),
   amount_unit: ['元', '万元', '亿元']
 }
 const DEFAULT_UNITS = { '元': 1, '万元': 10000, '亿元': 100000000 }
 
 export const optionGroups = reactive({
-  status: [], method: [], project_type: [], correction_item: [], doc_way: [], amount_unit: [],
+  status: [], method: [], project_type: [], correction_item: [], doc_way: [], review_reason: [], amount_unit: [],
   labels: Object.assign({}, GROUP_LABELS),
   fixedStatuses: STATUSES.slice(),
   ready: false

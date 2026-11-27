@@ -28,8 +28,11 @@
   <!-- 状态互斥二次确认（2.3（3）） -->
   <div class="confirm" v-if="confirmState">
     <div class="box">
-      <div style="font-size:15px;margin-bottom:14px">
+      <div v-if="confirmState.conflict" style="font-size:15px;margin-bottom:14px">
         切换到「{{ confirmState.to }}」将清空已填写的「{{ confirmState.conflict === 'completed' ? '完成招标' : '终止招标' }}」信息，且不可恢复。是否继续？意向公示、正在招标与公共信息不会被清空。
+      </div>
+      <div v-if="confirmState.trackingReset" style="font-size:14px;margin-bottom:14px;color:#c0261b;line-height:1.7">
+        项目状态由「{{ confirmState.from }}」变为「{{ confirmState.to }}」，属于状态倒退/切换：该项目的跟进状态将重置，<b>原复盘记录会归档到历史</b>，内部动态按当前时间重新计算。请确认继续。
       </div>
       <div style="display:flex;justify-content:flex-end;gap:8px">
         <button class="btn" @click="cancelSwitch">取消</button>
@@ -44,6 +47,7 @@ import { reactive, ref, computed, provide, watch } from 'vue'
 import { createProject, updateProject } from '../api.js'
 import { toastError } from '../utils/toast.js'
 import { useValidation } from './form/useValidation.js'
+import { isResetSwitch } from '../utils/tracking.js'
 import * as V from './form/validation.js'
 import PublicInfo from './form/PublicInfo.vue'
 import PartyInfo from './form/PartyInfo.vue'
@@ -56,7 +60,9 @@ import CompletedInfo from './form/CompletedInfo.vue'
 const props = defineProps({
   mode: { type: String, default: 'add' },
   projectId: { type: Number, default: null },
-  initial: { type: Object, default: null }
+  initial: { type: Object, default: null },
+  // 仅已跟进项目倒退状态时才提示复盘归档，避免对未跟进项目误报
+  tracked: { type: Boolean, default: false }
 })
 const emit = defineEmits(['close', 'saved'])
 
@@ -110,7 +116,9 @@ watch(function () { return form.public.status; }, function (next, prev) {
   let conflict = null
   if (next === '终止招标' && prev === '完成招标' && V.hasStageData(form.completed)) conflict = 'completed'
   if (next === '完成招标' && prev === '终止招标' && V.hasStageData(form.terminated)) conflict = 'terminated'
-  if (conflict) confirmState.value = { from: prev, to: next, conflict: conflict }
+  // 倒退 / 完成↔终止互换：提示跟进复盘会被归档（后端同事务执行重置）
+  const trackingReset = props.tracked && isResetSwitch(prev, next)
+  if (conflict || trackingReset) confirmState.value = { from: prev, to: next, conflict: conflict, trackingReset: trackingReset }
 })
 
 function confirmSwitch() {

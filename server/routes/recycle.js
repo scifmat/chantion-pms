@@ -10,6 +10,7 @@ const { TABLES, normName, countReferences } = require('../archive');
 const { writeLog } = require('../operation');
 const { replaceProjectWinners } = require('../winners');
 const { invalidateGlobalCache } = require('../globalStats');
+const T = require('../tracking');
 
 const router = express.Router();
 
@@ -62,12 +63,14 @@ router.get('/', (req, res) => {
   const rows = db.prepare('SELECT ' + cols + ' FROM ' + c.table +
     ' WHERE ' + where.join(' AND ') + ' ORDER BY deleted_at DESC, id DESC').all(...args);
 
+  const flags = T.getFlags(db, c.key === 'project' ? rows.map(function (r) { return r.id; }) : []);
   const data = rows.map(function (row) {
     if (c.key === 'project') {
       return {
         id: row.id, type: 'project', label: c.label,
         no: originalProjectNo(row), name: row.project_name,
-        deleted_at: row.deleted_at || dateText(row.updated_at), ref_count: 0
+        deleted_at: row.deleted_at || dateText(row.updated_at), ref_count: 0,
+        tracking_owner: flags[row.id] ? flags[row.id].tracking_owner : ''
       };
     }
     const original = originalArchiveName(row);
@@ -152,6 +155,9 @@ router.delete('/:type/:id', requireAdmin, (req, res) => {
       if (c.key === 'project') {
         const row = db.prepare('SELECT row_id, project_no, project_name FROM projects WHERE row_id = ? AND deleted = 1').get(id);
         if (!row) return { notFound: true };
+        // 防御性拦截：历史遗留或绕过软删除校验留下的已跟进项目，同样禁止彻底删除
+        const owner = T.blockingOwner(db, id);
+        if (owner) return { conflict: '该项目正由「' + owner + '」跟进，请先关闭跟进开关后再彻底删除' };
         const no = originalProjectNo(row);
         db.prepare('DELETE FROM project_winners WHERE project_no = ?').run(no);
         db.prepare('DELETE FROM project_winners WHERE project_no = ?').run(row.project_no);

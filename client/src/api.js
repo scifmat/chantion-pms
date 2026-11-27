@@ -31,6 +31,7 @@ async function request(path, options = {}) {
   // 常驻页面（如档案页）watch 它即可静默刷新引用数，不必重新挂载组件。
   const method = String(fetchOptions.method || 'GET').toUpperCase();
   const purePath = String(path || '').split('?')[0];
+  // 跟进类写操作由各组件在成功后显式 bumpDataVersion()，避免同一操作重复触发静默刷新
   if (method !== 'GET' && /^\/(projects|archives|recycle)(\/|$)/.test(purePath)) bumpDataVersion();
   return data.data
 }
@@ -231,6 +232,45 @@ export function restoreRecycleItem(type, id) {
 }
 export function purgeRecycleItem(type, id) {
   return request('/recycle/' + encodeURIComponent(type) + '/' + encodeURIComponent(id), { method: 'DELETE' })
+}
+
+// 第 18 步：项目跟进 -------------------------------------------------------
+export function getTrackings(params = {}) {
+  const q = new URLSearchParams()
+  ;['stage', 'internal', 'status', 'owner', 'keyword'].forEach(function (k) {
+    const v = params[k]
+    if (v !== undefined && v !== null && String(v).trim() !== '') q.set(k, String(v).trim())
+  })
+  const s = q.toString()
+  return request('/trackings' + (s ? '?' + s : ''))
+}
+export function getTrackingSummary() {
+  return request('/trackings/summary')
+}
+export function getTracking(id) {
+  return request('/trackings/' + encodeURIComponent(id))
+}
+export function claimTracking(projectId) {
+  return request('/trackings/project/' + encodeURIComponent(projectId) + '/claim', { method: 'POST' })
+}
+export function releaseTracking(projectId) {
+  return request('/trackings/project/' + encodeURIComponent(projectId) + '/release', { method: 'POST' })
+}
+export function updateTrackingInternal(id, payload) {
+  return request('/trackings/' + encodeURIComponent(id) + '/internal', {
+    method: 'PUT', body: JSON.stringify(payload)
+  })
+}
+export function saveTrackingReview(id, payload) {
+  return request('/trackings/' + encodeURIComponent(id) + '/review', {
+    method: 'PUT', body: JSON.stringify(payload)
+  })
+}
+// 统一「跟进轨迹」弹窗：按节点保存复盘/补录
+export function saveStageReview(id, stageKey, payload) {
+  return request('/trackings/' + encodeURIComponent(id) + '/stages/' + encodeURIComponent(stageKey), {
+    method: 'PUT', body: JSON.stringify(payload)
+  })
 }
 
 // 第 8 步：只读操作记录（事件级）
