@@ -90,8 +90,8 @@
           :active="current === '操作记录'"
         />
         <RecycleBin
-          v-show="current === '回收站'"
-          :active="current === '回收站'"
+          v-show="current === '回收管理'"
+          :active="current === '回收管理'"
         />
       </div>
     </main>
@@ -142,7 +142,7 @@ const allNav = [
   { label: '竞争对手', icon: Trophy },
   { label: '项目跟进', icon: Flag, needLogin: true },
   { label: '操作记录', icon: Clock, needLogin: true },
-  { label: '回收站', icon: Delete, needLogin: true },
+  { label: '回收管理', icon: Delete, needLogin: true },
   { label: '系统管理', icon: Setting, needAdmin: true }
 ]
 const visibleNav = computed(function () {
@@ -187,7 +187,7 @@ watch([isLoggedIn, isAdmin], function () {
   if (current.value === '系统管理' && !isAdmin.value) current.value = '项目列表'
   if (current.value === '操作记录' && !isLoggedIn.value) current.value = '项目列表'
   if (current.value === '数据看板' && !isLoggedIn.value) current.value = '项目列表'
-  if (current.value === '回收站' && !isLoggedIn.value) current.value = '项目列表'
+  if (current.value === '回收管理' && !isLoggedIn.value) current.value = '项目列表'
   if (current.value === '项目跟进' && !isLoggedIn.value) current.value = '项目列表'
 })
 
